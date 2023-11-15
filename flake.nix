@@ -26,11 +26,15 @@
               modules = [
                 {
                   # https://devenv.sh/reference/options/
-                  packages = [ pkgs.hello ];
+                  packages = with pkgs; [
+                    (python3.withPackages (ps: (with ps; [
+                      black
+                    ])))
+                  ];
 
                   enterShell = ''
-                    hello
-                    echo feazfe
+                    pv=`python --version`
+                    echo "Welcome to sinvoker engine, using $pv"
                   '';
                 }
               ];
