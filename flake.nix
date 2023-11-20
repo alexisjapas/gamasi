@@ -29,6 +29,8 @@
                   packages = with pkgs; [
                     (python3.withPackages (ps: (with ps; [
                       black
+                      matplotlib
+                      numpy
                     ])))
                   ];
 
