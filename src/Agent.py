@@ -5,13 +5,19 @@ class Agent:
     current_count = 0
     total_count = 0
 
-    def __init__(self, generation: int):
+    def __init__(self, initial_position: (int, int), generation: int):
+        self.positions = [initial_position]
         self.generation = generation
 
+        self.age = 0
+
+        # id
         self.id = Agent.total_count
         Agent.current_count += 1
         Agent.total_count += 1
-        self.color = (randint(1, 255), randint(1, 255), randint(1, 255))
+
+    def __repr__(self):
+        return f"ID: {self.id:05d} | GEN: {self.generation:05d} | AGE: {self.age:05} | POS: {self.positions[-1]}\n"
 
     def __del__(self):
         Agent.current_count -= 1
@@ -19,8 +25,8 @@ class Agent:
 
 if __name__ == "__main__":
     agents = [Agent(0) for i in range(10)]
-    a = Agent(0)
-    b = Agent(0)
+    a = Agent((0, 0), 0)
+    b = Agent((0, 1), 0)
     c = Agent(1)
     print(Agent.current_count)
     del b
