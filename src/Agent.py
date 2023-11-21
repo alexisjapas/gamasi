@@ -6,7 +6,7 @@ class Agent:
     total_count = 0
 
     def __init__(self, initial_position: (int, int), generation: int):
-        self.positions = [initial_position]
+        self.position = initial_position
         self.generation = generation
 
         self.age = 0
@@ -17,7 +17,11 @@ class Agent:
         Agent.total_count += 1
 
     def __repr__(self):
-        return f"ID: {self.id:05d} | GEN: {self.generation:05d} | AGE: {self.age:05} | POS: {self.positions[-1]}\n"
+        ID = f"ID: {self.id:05d}"
+        GEN = f"GEN: {self.generation:05d}"
+        AGE = f"AGE: {self.age:05}"
+        POS = f"POS: {self.position}"
+        return f"{ID} | {GEN} | {AGE} | {POS}\n"
 
     def __del__(self):
         Agent.current_count -= 1
