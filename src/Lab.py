@@ -20,13 +20,21 @@ class Lab:
         ]
 
         # timeline metrics
-        initial_population_map = np.zeros((height, width))
-        self.population_map = initial_population_map[np.newaxis, :, :]
+        initial_population_map = self.get_population_map()
+        self.population_maps = initial_population_map[np.newaxis, :, :]
+
+    def get_population_map(self):
+        current_map = np.zeros((self.height, self.width))
+        for agent in self.population:
+            current_map[agent.position] = agent.id
+        
+        return current_map
 
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
 
-    lab = Lab(height=10, width=20, initial_population=10)
-    print(lab.population)
-    print(lab.population_map)
+    lab = Lab(height=10, width=20, initial_population=200)
+    print(np.sum(lab.population_maps[-1] != 0))
+    plt.imshow(lab.population_maps[-1])
+    plt.show()
