@@ -1,13 +1,18 @@
+import threading
 import numpy as np
 from random import randint
 
 
-class Agent:
+class Agent(threading.Thread):
     current_count = 0
     total_count = 0
 
     def __init__(
-        self, population_map: np.array, initial_position: (int, int), generation: int
+        self,
+        population_map: np.array,
+        map_lock: threading.Lock,
+        initial_position: (int, int),
+        generation: int,
     ):
         # Agent properties
         self.position = initial_position
@@ -16,8 +21,10 @@ class Agent:
         self.id = Agent.total_count
 
         # Map
+        self.map_lock = map_lock
         self.population_map = population_map
-        self.population_map[initial_position] = self
+        with map_lock:
+            self.population_map[initial_position] = self
 
         # Increment agents counters
         Agent.current_count += 1
