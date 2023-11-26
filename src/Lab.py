@@ -1,6 +1,7 @@
 import threading
 import numpy as np
 from random import shuffle, randint
+from time import sleep
 
 from Agent import Agent
 
@@ -61,8 +62,13 @@ if __name__ == "__main__":
     lab = Lab(height=height, width=width, init_population_count=init_pop_count)
     assert np.sum(lab.population_map != None) == init_pop_count  # TODO add to tests
 
-    print(threading.active_count())
+    for agent in lab.population:
+        agent.start()
 
+    print(f"Active threads: {threading.active_count()-1}")
+    sleep(1)
+    for agent in lab.population:
+        agent.kill()
     # Visualization
     id_map = lab.get_id_map()
     plt.imshow(id_map)

@@ -1,6 +1,9 @@
 import threading
 import numpy as np
 from random import randint
+from time import sleep
+
+from Genome import Genome
 
 
 class Agent(threading.Thread):
@@ -14,11 +17,17 @@ class Agent(threading.Thread):
         initial_position: (int, int),
         generation: int,
     ):
+        super().__init__()
+
+        # Genome
+        self.genome = Genome()
+
         # Agent properties
         self.position = initial_position
         self.generation = generation
         self.age = 0
         self.id = Agent.total_count
+        self.die = threading.Event()
 
         # Map
         self.map_lock = map_lock
@@ -29,6 +38,20 @@ class Agent(threading.Thread):
         # Increment agents counters
         Agent.current_count += 1
         Agent.total_count += 1
+
+        # Debug
+        print(f"Agent {self.id} initialized")
+
+    def run(self):
+        print(f"RUN")
+        counter = 0
+        while not self.die.is_set():
+            counter += 1
+            sleep(self.genome.reaction_time)
+        print(f"{self.id}: {counter}")
+
+    def kill(self):
+        self.die.set()
 
     def __del__(self):
         Agent.current_count -= 1
