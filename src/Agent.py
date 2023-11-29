@@ -4,6 +4,8 @@ from random import randint
 from time import sleep
 
 from Genome import Genome
+from Space import Space
+from Position import Position
 
 
 class Agent(threading.Thread):
@@ -12,9 +14,8 @@ class Agent(threading.Thread):
 
     def __init__(
         self,
-        population_map: np.array,
-        map_lock: threading.Lock,
-        initial_position: (int, int),
+        space: Space,
+        initial_position: Position,
         generation: int,
     ):
         super().__init__()
@@ -24,16 +25,16 @@ class Agent(threading.Thread):
 
         # Agent properties
         self.position = initial_position
+        self.path = [initial_position]
         self.generation = generation
         self.age = 0
         self.id = Agent.total_count
         self.die = threading.Event()
 
-        # Map
-        self.map_lock = map_lock
-        self.population_map = population_map
-        with map_lock:
-            self.population_map[initial_position] = self
+        # Space
+        self.space = space
+        with space.lock:
+            self.space[initial_position] = self
 
         # Increment agents counters
         Agent.current_count += 1
@@ -43,15 +44,36 @@ class Agent(threading.Thread):
         print(f"Agent {self.id} initialized")
 
     def run(self):
-        print(f"RUN")
-        counter = 0
+        print(f"Agent {self.id} start running")
         while not self.die.is_set():
-            counter += 1
             sleep(self.genome.reaction_time)
-        print(f"{self.id}: {counter}")
+            self.move(
+                Position(randint(-1, 1), randint(-1, 1), genesis=self.space.genesis)
+            )
+
+    def move(self, relative_pos: Position):
+        new_pos = self.position + relative_pos
+        with self.space.lock:
+            if self.space.is_valid(new_pos):
+                # Update space
+                self.space[self.position] = None
+                self.space[new_pos] = self
+
+                # Update self attributes
+                self.position = new_pos
+                self.path.append(new_pos)
 
     def kill(self):
         self.die.set()
+
+    @property
+    def array_path(self):
+        array_path = np.zeros((self.space.height, self.space.width))
+        for step in self.path:
+            array_path[step.tuple] = int(
+                (step.t - self.path[0].t) / (self.path[-1].t - self.path[0].t) * 255
+            )
+        return array_path
 
     def __del__(self):
         Agent.current_count -= 1
