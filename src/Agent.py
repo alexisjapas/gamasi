@@ -9,8 +9,10 @@ from Position import Position
 
 
 class Agent(threading.Thread):
-    current_count = 0
-    total_count = 0
+    living_lock = threading.Lock()
+    living = {}
+    dead_lock = threading.Lock()
+    dead = {}
 
     def __init__(
         self,
@@ -28,24 +30,25 @@ class Agent(threading.Thread):
         self.path = [initial_position]
         self.generation = generation
         self.age = 0
-        self.id = Agent.total_count
-        self.die = threading.Event()
+        with Agent.living_lock:
+            self.id = len(Agent.living)
+        self.stop = threading.Event()
 
         # Space
         self.space = space
         with space.lock:
             self.space[initial_position] = self
 
-        # Increment agents counters
-        Agent.current_count += 1
-        Agent.total_count += 1
+        # Add to living list
+        with Agent.living_lock:
+            Agent.living[self.id] = self
 
         # Debug
         print(f"Agent {self.id} initialized")
 
     def run(self):
         print(f"Agent {self.id} start running")
-        while not self.die.is_set():
+        while not self.stop.is_set():
             sleep(self.genome.reaction_time)
             self.move(
                 Position(randint(-1, 1), randint(-1, 1), genesis=self.space.genesis)
@@ -63,8 +66,15 @@ class Agent(threading.Thread):
                 self.position = new_pos
                 self.path.append(new_pos)
 
+    def reproduce(self):
+        pass
+
     def kill(self):
-        self.die.set()
+        with Agent.living_lock:
+            dead = Agent.living.pop(self.id)
+        with Agent.dead_lock:
+            Agent.dead[self.id] = dead
+        self.stop.set()
 
     @property
     def array_path(self):
@@ -74,9 +84,6 @@ class Agent(threading.Thread):
                 (step.t - self.path[0].t) / (self.path[-1].t - self.path[0].t) * 255
             )
         return array_path
-
-    def __del__(self):
-        Agent.current_count -= 1
 
     def __repr__(self):
         return f"{self.id}"

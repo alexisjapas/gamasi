@@ -9,6 +9,7 @@ class Space:
     """
     This class control and lock space (and time)
     """
+
     def __init__(self, height: int, width: int, lock: threading.Lock = None):
         self.height: int = height
         self.width: int = width

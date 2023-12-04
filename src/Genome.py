@@ -5,5 +5,6 @@ class Genome:
     Hereditary attributes are locked into a structure to be passed on to the next generation
     But they are copied and can evolve during the life of the agent
     """
+
     def __init__(self):
         self.reaction_time: float = 10**-5

@@ -16,24 +16,34 @@ class Lab:
         self.space = Space(height=height, width=width, lock=threading.Lock())
 
         # Population
-        self.population = self._invoke_population(init_population_count)
+        self._invoke_population(init_population_count)
 
     def experiment(self, duration):
         # Start
-        for agent in lab.population:
-            agent.start()
+        self._start_agents()
+
+        # Run
         sleep(duration)
 
         # Stop
-        for agent in lab.population:
-            agent.kill()
+        self._stop_agents()
+
+    def _start_agents(self):
+        with Agent.living_lock:
+            for agent in Agent.living.values():
+                agent.start()
+
+    def _stop_agents(self):
+        with Agent.living_lock:
+            for agent in Agent.living.values():
+                agent.stop.set()
 
     def analyze(self, n_viz):
-        assert n_viz <= len(self.population)
+        assert n_viz <= len(Agent.living)
         n_viz = 3
         for i in range(n_viz):
             plt.figure(f"Agent's n°{i} path")
-            plt.imshow(lab.population[i].array_path)
+            plt.imshow(Agent.living[i].array_path)
         plt.figure("Final positions")
         plt.imshow(lab.space.displayable)
         plt.show()
@@ -55,7 +65,7 @@ class Lab:
                                 new_pos_values[0], new_pos_values[1], self.space.genesis
                             )
                         )
-        return [
+        [
             Agent(
                 space=self.space,
                 initial_position=pos,
