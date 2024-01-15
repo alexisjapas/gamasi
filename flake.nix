@@ -27,8 +27,10 @@
                 {
                   # https://devenv.sh/reference/options/
                   packages = with pkgs; [
+                    graphviz
                     (python3.withPackages (ps: (with ps; [
                       black
+                      pylint
                       matplotlib
                       numpy
                     ])))
