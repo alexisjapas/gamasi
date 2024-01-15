@@ -2,7 +2,7 @@ import threading
 import numpy as np
 from time import perf_counter_ns
 
-from Position import Position
+from .Position import Position
 
 
 class Space:

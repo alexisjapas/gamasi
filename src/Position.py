@@ -18,17 +18,15 @@ class Position:
 
     def __add__(self, other):
         assert isinstance(other, Position)
+        assert self.genesis == other.genesis
         return Position(y=self.y + other.y, x=self.x + other.x, genesis=self.genesis)
-
-    def __eq__(self, other):
-        return isinstance(other, Position) and self.y == other.y and self.x == other.x
 
     def __repr__(self):
         return f"P(y={self.y}, x={self.x}, t={self.t})"
 
 
 if __name__ == "__main__":
-    a = Position(2, 4)
+    a = Position(2, 4, 6)
     b = Position(3, 5)
     c = a + b
     print(c)

@@ -2,10 +2,11 @@ import threading
 import numpy as np
 from random import shuffle, randint
 from time import sleep
+from matplotlib import pyplot as plt
 
-from Agent import Agent
-from Space import Space
-from Position import Position
+from .Agent import Agent
+from .Space import Space
+from .Position import Position
 
 
 class Lab:
@@ -45,7 +46,7 @@ class Lab:
             plt.figure(f"Agent's n°{i} path")
             plt.imshow(Agent.living[i].array_path)
         plt.figure("Final positions")
-        plt.imshow(lab.space.displayable)
+        plt.imshow(self.space.displayable)
         plt.show()
 
     def _invoke_population(
@@ -73,18 +74,3 @@ class Lab:
             )
             for pos in positions
         ]
-
-
-if __name__ == "__main__":
-    from matplotlib import pyplot as plt
-
-    # Settings
-    height = 72
-    width = 100
-    init_pop_count = 10
-
-    # Init lab
-    lab = Lab(height=height, width=width, init_population_count=init_pop_count)
-    assert np.sum(lab.space.array != None) == init_pop_count  # TODO move to tests
-    lab.experiment(duration=1e-1)
-    lab.analyze(n_viz=3)
