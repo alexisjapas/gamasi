@@ -29,6 +29,7 @@
                   packages = with pkgs; [
                     graphviz
                     (python3.withPackages (ps: (with ps; [
+                      ipykernel
                       black
                       pylint
                       matplotlib
