@@ -3,7 +3,7 @@ import numpy as np
 from random import randint
 from time import sleep
 
-from .Genome import Genome
+from .Phenome import Phenome
 from .Space import Space
 from .Position import Position
 
@@ -19,15 +19,14 @@ class Agent(threading.Thread):
         space: Space,
         initial_position: Position,
         generation: int,
-        genome: Genome = None,
+        phenome: Phenome = None,
     ):
         super().__init__()
 
-        # Genome TODO change names
-        if genome is None:
-            genome = Genome()
-        self.genome = genome  # hereditary
-        self.phenotype = genome
+        if phenome is None:
+            phenome = Phenome()
+        self.initial_phenome = phenome
+        self.phenome = phenome
 
         # Agent properties
         self.position = initial_position
@@ -55,13 +54,13 @@ class Agent(threading.Thread):
     def run(self):
         print(f"Agent {self.id} start running")
         while not self.stop.is_set():
-            sleep(self.phenotype.reaction_time)
+            sleep(self.phenome.reaction_time)
             self.move(
                 Position(randint(-1, 1), randint(-1, 1), genesis=self.space.genesis)
             )
 
     def move(self, relative_pos: Position) -> bool:
-        sleep(1 / (2 * self.phenotype.speed))
+        sleep(1 / (2 * self.phenome.speed))
         success = False
         new_pos = self.position + relative_pos
         with self.space.lock:
@@ -75,7 +74,7 @@ class Agent(threading.Thread):
                 # Update self attributes
                 self.position = new_pos
                 self.path.append(new_pos)
-                sleep(1 / (2 * self.phenotype.speed))
+                sleep(1 / (2 * self.phenome.speed))
         return success
 
     def reproduce(self) -> None:  # TODO Multi-agents reproduction
@@ -99,7 +98,7 @@ class Agent(threading.Thread):
                         space=self.space,
                         initial_position=None,
                         generation=self.generation + 1,
-                        genome=self.genome.mutate(),
+                        phenome=self.phenome.mutate(),
                     )
                 )
 

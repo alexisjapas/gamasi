@@ -1,9 +1,9 @@
 from .Brain import Brain
 
 
-class Genome:
+class Phenome:
     """
-    It will be possible to create one genome from other genome(s) with mutations
+    It will be possible to create one phenome from other phenome(s) with mutations
     Hereditary attributes are locked into a structure to be passed on to the next generation
     But they are copied and can evolve during the life of the agent
     """
