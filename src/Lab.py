@@ -3,6 +3,7 @@ import numpy as np
 from random import shuffle, randint
 from time import sleep
 from matplotlib import pyplot as plt
+from math import ceil
 
 from .Agent import Agent
 from .Space import Space
@@ -19,16 +20,6 @@ class Lab:
         # Population
         self._invoke_population(init_population_count)
 
-    def experiment(self, duration):
-        # Start
-        self._start_agents()
-
-        # Run
-        sleep(duration)
-
-        # Stop
-        self._stop_agents()
-
     def _start_agents(self):
         with Agent.living_lock:
             for agent in Agent.living.values():
@@ -38,16 +29,6 @@ class Lab:
         with Agent.living_lock:
             for agent in Agent.living.values():
                 agent.stop.set()
-
-    def analyze(self, n_viz):
-        assert n_viz <= len(Agent.living)
-        n_viz = 3
-        for i in range(n_viz):
-            plt.figure(f"Agent's n°{i} path")
-            plt.imshow(Agent.living[i].array_path)
-        plt.figure("Final positions")
-        plt.imshow(self.space.displayable)
-        plt.show()
 
     def _invoke_population(
         self, init_population_count: int, distribution: str = "random"
@@ -74,3 +55,31 @@ class Lab:
             )
             for pos in positions
         ]
+
+    def experiment(self, duration):
+        # Start
+        self._start_agents()  # TODO all agents shall wait until starting
+
+        # Run
+        sleep(duration)
+
+        # Stop
+        self._stop_agents()
+
+    def analyze(self, n_viz=4):
+        assert n_viz <= len(Agent.living)
+
+        fig = plt.figure()
+        n_rows = ceil(n_viz**(1/2))
+        n_cols = ceil(n_viz / n_rows)
+        print(n_rows)
+        for i in range(n_viz):
+            plt.subplot(n_rows, n_cols, i+1)
+            plt.imshow(Agent.living[i].array_path)
+            plt.title(f"Agent's n°{i} path")
+            plt.axis("off")
+        plt.figure()
+        plt.imshow(self.space.displayable)
+        plt.title("Final positions")
+        plt.axis("off")
+        plt.show()
