@@ -4,10 +4,15 @@ from random import shuffle, randint
 from time import sleep
 from matplotlib import pyplot as plt
 from math import ceil
+from enum import Enum
 
 from .Agent import Agent
 from .Space import Space
 from .Position import Position
+
+
+class Distributions(Enum):
+    random = "random"
 
 
 class Lab:
@@ -18,7 +23,9 @@ class Lab:
         self.space = Space(height=height, width=width, lock=threading.Lock())
 
         # Population
+        self.init_population_count = init_population_count
         self._invoke_population(init_population_count)
+        assert np.sum(self.space.array != None) == init_population_count
 
     def _start_agents(self):
         with Agent.living_lock:
@@ -31,22 +38,20 @@ class Lab:
                 agent.stop.set()
 
     def _invoke_population(
-        self, init_population_count: int, distribution: str = "random"
+        self, init_population_count: int, distribution: Distributions = Distributions.random
     ) -> list[Agent]:
         positions = []
         match distribution:
-            case "random":
+            case Distributions.random:
                 while len(positions) < init_population_count:
-                    new_pos_values = (
+                    new_pos = Position(
                         randint(0, self.space.height - 1),
                         randint(0, self.space.width - 1),
                     )
-                    if new_pos_values not in positions:
-                        positions.append(
-                            Position(
-                                new_pos_values[0], new_pos_values[1], self.space.genesis
-                            )
-                        )
+                    if new_pos not in positions:
+                        positions.append(new_pos)
+            case _:
+                raise ValueError(f"Possible distributions: {[d.name for d in Distributions]}")
         [
             Agent(
                 space=self.space,
@@ -67,19 +72,28 @@ class Lab:
         self._stop_agents()
 
     def analyze(self, n_viz=4):
-        assert n_viz <= len(Agent.living)
+        n_viz = min(n_viz, self.init_population_count)
+        assert n_viz <= len(Agent.living) + len(Agent.dead)
 
+        # Display paths of some dead and living agents
         fig = plt.figure()
         n_rows = ceil(n_viz**(1/2))
         n_cols = ceil(n_viz / n_rows)
-        print(n_rows)
-        for i in range(n_viz):
+        deads_vizualized_count = min(n_viz//2, len(Agent.dead))
+        for i in range(deads_vizualized_count):
+            plt.subplot(n_rows, n_cols, i+1)
+            plt.imshow(Agent.dead[i].array_path)
+            plt.title(f"Dead agent's n°{i} path")
+            plt.axis("off")
+        for i in range(n_viz - deads_vizualized_count):
             plt.subplot(n_rows, n_cols, i+1)
             plt.imshow(Agent.living[i].array_path)
-            plt.title(f"Agent's n°{i} path")
+            plt.title(f"Living agent's n°{i} path")
             plt.axis("off")
+
+        # Display the space's final disposition
         plt.figure()
         plt.imshow(self.space.displayable)
-        plt.title("Final positions")
+        plt.title("Final space disposition")
         plt.axis("off")
         plt.show()

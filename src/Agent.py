@@ -23,12 +23,11 @@ class Agent(threading.Thread):
     ):
         super().__init__()
 
+        # Agent properties
         if phenome is None:
             phenome = Phenome()
         self.initial_phenome = phenome
         self.phenome = phenome
-
-        # Agent properties
         self.position = initial_position
         self.path = [initial_position]
         self.generation = generation
@@ -53,6 +52,8 @@ class Agent(threading.Thread):
 
     def run(self):
         print(f"Agent {self.id} start running")
+        if self.position.t is None:
+            self.position.start_time(genesis=self.space.genesis)
         while not self.stop.is_set():
             sleep(self.phenome.reaction_time)
             self.move(
