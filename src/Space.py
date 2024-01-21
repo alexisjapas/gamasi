@@ -35,7 +35,7 @@ class Space:
     @property
     def displayable(self):
         displayable_array: np.array = np.vectorize(
-            lambda agent: agent.id % 255 if agent is not None else 0,
+            lambda agent: (1+agent.id) % 255 if agent is not None else 0,
         )(self.array)
         return displayable_array
 
