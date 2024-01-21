@@ -53,6 +53,10 @@ class Agent(threading.Thread):
     def run(self):
         print(f"Agent {self.id} start running")
         if self.position.t is None:
+            # As space genesis can be started here, the first value
+            # of the time dimension of the first activated agent
+            # is equivalent to the time of the call of the function
+            # TODO is this conceptually optimal?
             self.position.start_time(genesis=self.space.genesis)
         while not self.stop.is_set():
             sleep(self.phenome.reaction_time)
