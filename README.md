@@ -2,4 +2,4 @@
 physics Simulation &amp; multi-agent INVOKER engine
 
 ## Example
-![Result example](results/output.gif){: style="display: block; margin: 0 auto; width: 100%" }
+<img src="results/output.gif" alt="Simulation example"/>
