@@ -1,4 +1,12 @@
+from enum import Enum
+
 from .Brain import Brain
+
+
+class Abilities(Enum):
+    idle = "idle"
+    move = "move"
+    #reproduce = "reproduce"
 
 
 class Phenome:
@@ -8,11 +16,12 @@ class Phenome:
     But they are copied and can evolve during the life of the agent
     """
 
-    def __init__(self, possible_actions: list=None):
+    def __init__(self):
         self.reaction_time: float = 10**-5
-        self.speed: float = 10
-        self.energy: float = 10
-        self.brain = Brain(possible_actions=possible_actions)
+        self.speed: float = 100
+        self.energy: float = 100
+        self.scope: int = 1
+        self.brain = Brain(possible_actions=Abilities)
 
     def mutate(self):  # TODO
         return self
