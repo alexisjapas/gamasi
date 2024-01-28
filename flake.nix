@@ -34,6 +34,7 @@
                       pylint
                       matplotlib
                       numpy
+                      imageio  # GIF rendering
                     ])))
                   ];
 
