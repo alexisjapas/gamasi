@@ -6,4 +6,4 @@ class Brain:
         self.possible_actions = possible_actions
 
     def __call__(self, inputs: list):
-        return random.choice(self.possible_actions)
+        return random.choice([pa for pa in self.possible_actions])
