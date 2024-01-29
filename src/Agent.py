@@ -19,9 +19,9 @@ class Agent(threading.Thread):
         universe: Universe,
         initial_position: Position,
         generation: int,
+        parents: list,
         phenome: Phenome = None,
         birth_date: int = None,
-        death_date: int = None,
         start_on_birth: bool = False,
     ):
         super().__init__()
@@ -35,7 +35,8 @@ class Agent(threading.Thread):
         self.path = [initial_position]  # TODO change it into an actions stacktrace
         self.generation = generation
         self.birth_date = birth_date
-        self.death_date = death_date
+        self.death_date = None
+        self.parents = parents
         self.start_on_birth = start_on_birth
         with Agent.living_lock:
             with Agent.dead_lock:
@@ -43,6 +44,7 @@ class Agent(threading.Thread):
             Agent.living[self.id] = self
         self.childrens = []
         self.stop = threading.Event()
+        self.color = (randint(22,222), randint(22,222),randint(22,222))  # TODO Keep it?
 
         # Universe
         self.universe = universe
@@ -55,7 +57,9 @@ class Agent(threading.Thread):
                 self.die()
 
         # Debug
-        print(f"Agent {self.id} initialized")
+        print(
+            f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
+        )
 
     def run(self):
         print(f"Agent {self.id} start running")
@@ -73,10 +77,6 @@ class Agent(threading.Thread):
         while not self.stop.is_set():  # TODO rework energy loss
             # Minimal energy loss
             self.phenome.energy -= 1
-
-            # Reaction time set up to set agents speed dependent of their phenome instead of
-            # the CPU core its thread is running on
-            sleep(self.phenome.reaction_time)
 
             # Decision making taking into account environment and self
             decision = self.phenome.brain(self._perceive_environment())
@@ -96,9 +96,19 @@ class Agent(threading.Thread):
                     ):
                         self.phenome.energy -= 2
                 case Abilities.reproduce:
-                    self.phenome.energy -= 20
-                    if self.reproduce():
+                    self.phenome.energy -= 10
+                    if (
+                        self.phenome.energy >= 20
+                        and self.universe.get_time() - self.birth_date >= 1e9
+                        and len(Agent.living) < 20
+                        and self.reproduce()
+                    ):
+                        print(len(Agent.living))
                         self.phenome.energy -= 20
+
+            # Reaction time set up to set agents speed dependent of their phenome instead of
+            # the CPU core its thread is running on
+            sleep(self.phenome.reaction_time)  # TODO rework
 
             # Die if energy < 1
             if self.phenome.energy < 1:
@@ -145,6 +155,8 @@ class Agent(threading.Thread):
                 initial_position=choice(possible_positions),
                 generation=self.generation + 1,
                 phenome=self.phenome.mutate(),
+                start_on_birth=True,
+                parents=[self],
             )
 
     def die(self):
@@ -152,7 +164,7 @@ class Agent(threading.Thread):
             dead = Agent.living.pop(self.id)
         with Agent.dead_lock:
             Agent.dead[self.id] = dead
-        self.death_date = perf_counter_ns() - self.universe.genesis
+        self.death_date = self.universe.get_time()
         self.stop.set()
         print(f"Agent {self.id} died")
 
@@ -167,8 +179,10 @@ class Agent(threading.Thread):
         return f"a_{self.id}"
 
     def __str__(self):
-        ID = f"ID: {self.id:05d}"
-        GEN = f"GEN: {self.generation:05d}"
-        AGE = f"AGE: {perf_counter_ns() - self.birth_date:05}"
+        ID = f"ID: {self.id:-3d}"
+        GEN = f"GEN: {self.generation:-3d}"
+        BIRTH = f"BIRTH: {int(self.birth_date/1e6):-6d} ms"
+        death = 0 if self.death_date is None else self.death_date
+        DEATH = f"DEATH: {int(death/1e6):-6d} ms"
         POS = f"POS: {self.position}"
-        return f"{ID} | {GEN} | {AGE} | {POS}\n"
+        return f"{ID} | {GEN} | {BIRTH} | {DEATH} | {POS}"
