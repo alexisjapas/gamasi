@@ -30,4 +30,4 @@ class Phenome:
         self.brain: Brain = Brain(possible_actions=Abilities)
 
     def mutate(self):  # TODO
-        return Phenome(energy=50)
+        return Phenome(energy=1000)

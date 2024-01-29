@@ -6,7 +6,6 @@ from .Position import Position
 
 
 # TODO get space...
-# TODO add set_space that control fine-grained lock
 class Universe:
     """
     This class control & lock space & time
@@ -16,7 +15,6 @@ class Universe:
         self.height: int = height
         self.width: int = width
         self.genesis = perf_counter_ns()
-        self.lock = threading.Lock()
         self.init_space()
 
     def init_space(self):
@@ -33,7 +31,7 @@ class Universe:
             for x in range(self.width):
                 self.space_locks[y,x] = threading.Lock()
 
-    def _wrap_position(self, pos: Position):
+    def wrap_position(self, pos: Position):
         # Used on every pos input
         pos.y = pos.y % self.height
         pos.x = pos.x % self.width
@@ -42,7 +40,7 @@ class Universe:
     def is_valid(
         self, pos: Position
     ):  # TODO rename or refactor (stop returning bool or pos)
-        pos = self._wrap_position(pos)
+        pos = self.wrap_position(pos)
         return pos if self.space[pos.tuple] is None else False
 
     def get_area(self, pos: Position, scope: int) -> np.array:

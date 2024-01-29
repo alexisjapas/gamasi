@@ -23,6 +23,7 @@ class Lab:
         self.universe = Universe(height=height, width=width)
 
         # Population
+        self.lab_authorization = True  # TODO use Threading event
         self.init_population_count = init_population_count
         self._invoke_population(init_population_count)
         assert np.sum(self.universe.space != None) == init_population_count
@@ -58,6 +59,7 @@ class Lab:
                 )
         [
             Agent(
+                lab_authorization=self.lab_authorization,
                 universe=self.universe,
                 initial_position=pos,
                 generation=0,
@@ -72,10 +74,11 @@ class Lab:
 
         # Run
         while duration > 0 and len(Agent.living) > 0:
-            sleep(0.1)
-            duration -= 0.1
+            sleep(1)
+            duration -= 1
 
         # Stop
+        self.lab_authorization=False
         self._stop_agents()
 
     def analyze(self, n_viz=4):
