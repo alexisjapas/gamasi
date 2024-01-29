@@ -2,6 +2,7 @@ import numpy as np
 from time import perf_counter_ns
 
 
+# TODO I do not like using perf_counter_ns() instead of universe.get_time
 class Position:
     def __init__(self, y: int, x: int, genesis: int=None):
         self.y = y
@@ -13,7 +14,7 @@ class Position:
     def tuple(self):
         return (self.y, self.x)
 
-    def start_time(self, genesis):
+    def start_time(self, genesis):  # TODO make it callable once only
         self.genesis = genesis
         self.t = perf_counter_ns() - genesis
 
