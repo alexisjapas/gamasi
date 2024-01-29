@@ -6,7 +6,7 @@ from .Brain import Brain
 class Abilities(Enum):
     idle = "idle"
     move = "move"
-    #reproduce = "reproduce"
+    reproduce = "reproduce"
 
 
 class Phenome:
@@ -16,12 +16,18 @@ class Phenome:
     But they are copied and can evolve during the life of the agent
     """
 
-    def __init__(self):
-        self.reaction_time: float = 10**-5
-        self.speed: float = 100
-        self.energy: float = 100
-        self.scope: int = 1
-        self.brain = Brain(possible_actions=Abilities)
+    def __init__(
+        self,
+        reaction_time: float = 10**-5,
+        speed: int = 1000,
+        energy: int = 1000,
+        scope: int = 1,
+    ):
+        self.reaction_time: float = reaction_time
+        self.speed: int = speed
+        self.energy: int = energy
+        self.scope: int = scope
+        self.brain: Brain = Brain(possible_actions=Abilities)
 
     def mutate(self):  # TODO
-        return self
+        return Phenome(energy=50)
