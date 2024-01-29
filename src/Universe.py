@@ -5,22 +5,33 @@ from time import perf_counter_ns
 from .Position import Position
 
 
+# TODO get space...
+# TODO add set_space that control fine-grained lock
 class Universe:
     """
-    This class control and lock space and time
+    This class control & lock space & time
     """
 
-    def __init__(self, height: int, width: int, lock: threading.Lock = None):
+    def __init__(self, height: int, width: int):
         self.height: int = height
         self.width: int = width
-        self._genesis = None  # Lazily loaded
-        self.lock = lock
+        self.genesis = perf_counter_ns()
+        self.lock = threading.Lock()
         self.init_space()
 
     def init_space(self):
+        # Space
         self.space: np.array = np.full(
             shape=(self.height, self.width), fill_value=None, dtype=object
         )
+
+        # Locks
+        self.space_locks: np.array = np.empty(
+            shape=(self.height, self.width), dtype=object
+        )
+        for y in range(self.height):
+            for x in range(self.width):
+                self.space_locks[y,x] = threading.Lock()
 
     def _wrap_position(self, pos: Position):
         # Used on every pos input
@@ -91,11 +102,8 @@ class Universe:
             pos.x - scope + left_overflow : pos.x + scope + 1 + left_overflow,
         ]
 
-    @property
-    def genesis(self) -> int:
-        if self._genesis is None:
-            self._genesis = perf_counter_ns()
-        return self._genesis
+    def get_time(self) -> int:
+        return perf_counter_ns() - self.genesis
 
     def get_displayable(self):
         displayable_array: np.array = np.vectorize(
@@ -124,7 +132,7 @@ class Universe:
         return self.space == other
 
     def __repr__(self):
-        return f"Space at {perf_counter_ns() - self.genesis} ns\n{self.space}"
+        return f"Space at {self.get_time()} ns\n{self.space}"
 
 
 if __name__ == "__main__":
