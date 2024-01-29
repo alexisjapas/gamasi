@@ -20,7 +20,7 @@ class Lab:
         assert init_population_count <= height * width
 
         # Universe
-        self.universe = Universe(height=height, width=width, lock=threading.Lock())
+        self.universe = Universe(height=height, width=width)
 
         # Population
         self.init_population_count = init_population_count
@@ -61,6 +61,7 @@ class Lab:
                 universe=self.universe,
                 initial_position=pos,
                 generation=0,
+                parents=None,
             )
             for pos in positions
         ]
@@ -71,15 +72,14 @@ class Lab:
 
         # Run
         while duration > 0 and len(Agent.living) > 0:
-            sleep(1)
-            duration -= 1
+            sleep(0.1)
+            duration -= 0.1
 
         # Stop
         self._stop_agents()
 
     def analyze(self, n_viz=4):
-        n_viz = min(n_viz, self.init_population_count)
-        assert n_viz <= len(Agent.living) + len(Agent.dead)
+        n_viz = min(n_viz, len(Agent.living) + len(Agent.dead))
 
         # Some stats
         print(f"Living: {len(Agent.living)} | Dead: {len(Agent.dead)}")
@@ -135,10 +135,16 @@ class Lab:
                     inactives.append(agent)
 
             # Display agents
-            frame = np.zeros_like(self.universe.space, dtype=np.intc)
+            frame = np.zeros(
+                (self.universe.space.shape[0], self.universe.space.shape[1], 3),
+                dtype=np.uint8,
+            )
             for agent in actives + inactives:
-                frame[agent.position.tuple] = 255
-
+                if agent.position.t <= time:
+                    if agent.birth_date == agent.position.t:
+                        frame[agent.position.y, agent.position.x] = (0, 255, 0)
+                    else:
+                        frame[agent.position.y, agent.position.x] = agent.color
             # Removing deads
             actives: list = [
                 a for a in actives if a.death_date is None or time < a.death_date
