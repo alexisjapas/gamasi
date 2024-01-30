@@ -91,7 +91,7 @@ class Lab:
             for agent in list(Agent.living.values()) + list(Agent.dead.values())
         ]
         paths_lengths.sort()
-        path_len_mean = sum(paths_lengths) / len(paths_lengths)
+        path_len_mean = int(sum(paths_lengths) / len(paths_lengths))
         print(f"Agents mean path len = {path_len_mean} px")
         path_len_median = paths_lengths[len(paths_lengths) // 2]
         print(f"Agents median path len = {path_len_median} px")
@@ -111,7 +111,6 @@ class Lab:
 
     def generate_actions_timeline(self, time_step):
         # TODO it does not render things after the last action,
-        # should death be an action?
         # TODO maybe use copy()
         # TODO look for a method to determine optimal time_step
         actives: list = [a for a in Agent.living.values() if a.path] + [
@@ -144,10 +143,7 @@ class Lab:
             )
             for agent in actives + inactives:
                 if agent.position.t <= time:
-                    if agent.birth_date == agent.position.t:
-                        frame[agent.position.y, agent.position.x] = (0, 255, 0)
-                    else:
-                        frame[agent.position.y, agent.position.x] = agent.color
+                    frame[agent.position.y, agent.position.x] = agent.phenome.color
             # Removing deads
             actives: list = [
                 a for a in actives if a.death_date is None or time < a.death_date
