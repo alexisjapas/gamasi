@@ -16,6 +16,7 @@ class Universe:
         self.width: int = width
         self.genesis = perf_counter_ns()
         self.init_space()
+        self.freeze:bool = False  # TODO verify optimality
 
     def init_space(self):
         # Space
