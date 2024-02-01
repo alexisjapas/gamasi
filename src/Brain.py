@@ -9,7 +9,7 @@ class Abilities(Enum):
 
 
 class Brain:
-    def __init__(self, weights=[0.5, 0.3, 0.2]) -> None:
+    def __init__(self, weights=[0.1, 0.85, 0.05]) -> None:
         self.weights = weights
 
     def __call__(self, inputs: list):
