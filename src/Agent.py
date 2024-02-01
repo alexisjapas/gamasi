@@ -10,20 +10,17 @@ from .Position import Position
 
 
 class Agent(threading.Thread):
-    living_lock = threading.Lock()
-    living = {}
-    dead_lock = threading.Lock()
-    dead = {}
-    count_lock = threading.Lock()
+    population: dict = {}
+    lock = threading.Lock()
     count = 0
 
     def __init__(
         self,
-        lab_authorization: bool,
         universe: Universe,
         initial_position: Position,
         generation: int,
         parents: list,
+        energy: int = None,
         phenome: Phenome = None,
         birth_date: int = None,
         start_on_birth: bool = False,
@@ -32,47 +29,47 @@ class Agent(threading.Thread):
 
         # Agent properties TODO attributes structuring
         # Experiment related
-        self.lab_authorization = lab_authorization
-        self.universe = universe
-        self.stop = threading.Event()
-
-        # Agent's properties
-        # Constants
-        self.initial_phenome = phenome if phenome is not None else Phenome()
-        self.generation = generation
-        self.parents = parents
-        # Set once
-        self.birth_date = birth_date  # TODO Shouldn't it be init here?
-        self.death_date = None
-
-        # Evoluting ones
-        self.phenome = self.initial_phenome.copy()
-        self.position = initial_position
-        self.path = [initial_position]  # TODO change it into an actions stacktrace
-        self.childrens = []
-
-        with Agent.count_lock:
+        # Add to population dict
+        with Agent.lock:
             self.id = Agent.count
             Agent.count += 1
-        with Agent.living_lock:
-            Agent.living[self.id] = self
+        if not universe.freeze:
+            Agent.population[self.id] = self
+            self.universe = universe
+            self.stop = threading.Event()
 
-        # Autostart
-        with universe.space_locks[initial_position.tuple]:
-            if self.universe.is_valid(initial_position):
-                self.universe[initial_position] = self
-                if start_on_birth:
-                    self.start()
-            else:
-                self.die()
+            # Agent's properties
+            # Constants
+            self.initial_phenome = phenome if phenome is not None else Phenome()
+            self.generation = generation
+            self.parents = parents
+            # Set once
+            self.birth_date = birth_date  # TODO Shouldn't it be init here?
+            self.death_date = None
 
-        # Debug
-        # print(
-        #     f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
-        # )
+            # Evoluting ones
+            self.phenome = self.initial_phenome.copy()
+            self.energy = energy if energy else self.phenome.energy_capacity
+            self.position = initial_position
+            self.path = [initial_position]  # TODO change it into an actions stacktrace
+            self.children = []
+
+            # Autostart
+            with universe.space_locks[initial_position.tuple]:
+                if self.universe.is_valid(initial_position):
+                    self.universe[initial_position] = self
+                    if start_on_birth:
+                        self.start()
+                else:
+                    self.die()
+
+            # Debug
+            print(
+                f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
+            )
 
     def run(self):
-        #print(f"Agent {self.id} start running")
+        print(f"Agent {self.id} start running")
         # Birth
         if self.position.t is None:
             # As universe genesis can be started here, the first value
@@ -85,15 +82,15 @@ class Agent(threading.Thread):
 
         # Lifetime
         while (
-            not self.stop.is_set() and self.lab_authorization
+            not self.stop.is_set() and not self.universe.freeze
         ):  # TODO rework energy loss
             # Reaction time set up to set agents speed dependent of their phenome instead of
             # the CPU core its thread is running on
             sleep(self.phenome.reaction_time)  # TODO rework
 
-            if self.lab_authorization:
+            if not self.universe.freeze:
                 # Minimal energy loss
-                self.phenome.energy -= 1
+                self.energy -= 1
 
                 # Decision making taking into account environment and self
                 decision = self.phenome.brain(self._perceive_environment())
@@ -101,34 +98,37 @@ class Agent(threading.Thread):
                 # Try to apply its decision
                 match decision:
                     case Abilities.idle:
-                        pass
+                        self.energy += 2
                     case Abilities.move:
-                        self.phenome.energy -= 1
+                        self.energy -= 1
                         if self.move(
                             Position(
-                                randint(-1, 1),
-                                randint(-1, 1),
+                                randint(1, 1),
+                                randint(0, 0),
                                 genesis=self.universe.genesis,
                             )
                         ):
-                            self.phenome.energy -= 1
+                            self.energy -= 1
                     case Abilities.reproduce:
-                        self.phenome.energy -= 1
-                        if (
-                            self.phenome.energy >= 10
-                            and self.reproduce()
-                        ):
-                            self.phenome.energy -= 10
+                        self.energy -= 1
+                        if self.energy >= 100:
+                            child = self.reproduce()
+                            self.energy -= self.energy // 2
+                            if child:
+                                self.children.append(child)
 
-                # Die if energy < 1
-                if self.phenome.energy < 1:
+                # Energy boundings
+                if self.energy < 1:
                     self.die()
+                self.energy = min(self.energy, self.phenome.energy_capacity)
 
     def _perceive_environment(self):
         return self.universe.get_area(self.position, self.phenome.scope)
 
-    def move(self, relative_pos: Position) -> bool:  # Add acceleration/velocity
-        sleep(1 / (2 * self.phenome.speed))
+    def move(self, relative_pos: Position) -> bool:
+        # TODO Add acceleration/velocity, manage it with universe time
+        # for example
+        # TODO Add inertia
         success = False
         new_pos = self.universe.wrap_position(self.position + relative_pos)
         with self.universe.space_locks[new_pos.tuple]:
@@ -142,12 +142,15 @@ class Agent(threading.Thread):
                 # Update self attributes
                 self.position = new_pos
                 self.path.append(new_pos)
-        if success:
-            sleep(1 / (2 * self.phenome.speed))
+
         return success
 
     def reproduce(self) -> None:  # TODO Multi-agents reproduction
+        child = None
+
         # Check possible positions
+        # TODO use universe get_area?
+        
         possible_positions = []
         for y in range(-1, 2):
             for x in range(-1, 2):
@@ -156,28 +159,23 @@ class Agent(threading.Thread):
                     possible_positions.append(pos)
 
         # Newborn to life if possible
-        if (
-            possible_positions
-        ):  # TODO Verify here if isvalid with lock, this allow to verify success
-            Agent(
-                lab_authorization=self.lab_authorization,
+        if possible_positions:
+            child = Agent(
                 universe=self.universe,
                 initial_position=choice(possible_positions),
                 generation=self.generation + 1,
-                phenome=self.phenome.copy(mutation=0),
+                phenome=self.initial_phenome.copy(mutation=0),
+                energy=self.energy // 2,
                 start_on_birth=True,
                 parents=[self],
             )
-        return True  # TODO
+
+        return child
 
     def die(self):
-        with Agent.living_lock:
-            dead = Agent.living.pop(self.id)
-        with Agent.dead_lock:
-            Agent.dead[self.id] = dead
         self.death_date = self.universe.get_time()
         self.stop.set()
-        # print(f"Agent {self.id} died")
+        print(f"Agent {self.id} died")
 
     @property
     def array_path(self):
