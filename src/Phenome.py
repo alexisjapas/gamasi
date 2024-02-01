@@ -11,16 +11,16 @@ class Phenome:
 
     def __init__(
         self,
-        reaction_time: float = 10**-5,
-        speed: int = 1000,
-        energy: int = 100,
+        reaction_time: float = 1e-5,
+        speed: int = 1e5,
+        energy_capacity: int = 1e4,
         scope: int = 1,
         color: tuple = None,
         brain: Brain = None,
     ):
         self.reaction_time: float = reaction_time
         self.speed: int = speed
-        self.energy: int = energy
+        self.energy_capacity: int = energy_capacity
         self.scope: int = scope
         self.color: tuple = (
             color if color else (randint(5, 252), randint(5, 252), randint(5, 252))
@@ -32,7 +32,7 @@ class Phenome:
         return Phenome(
             reaction_time=self.reaction_time,
             speed=self.speed,
-            energy=self.energy,
+            energy_capacity=self.energy_capacity,
             scope=self.scope,
             color=self.color,  # TODO how to mutate it?
             brain=self.brain.copy(mutation=mutation),
