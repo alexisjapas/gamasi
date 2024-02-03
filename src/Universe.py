@@ -15,8 +15,8 @@ class Universe:
         self.height: int = height
         self.width: int = width
         self.genesis = perf_counter_ns()
+        self.freeze: bool = False  # TODO verify optimality
         self.init_space()
-        self.freeze:bool = False  # TODO verify optimality
 
     def init_space(self):
         # Space
@@ -30,7 +30,7 @@ class Universe:
         )
         for y in range(self.height):
             for x in range(self.width):
-                self.space_locks[y,x] = threading.Lock()
+                self.space_locks[y, x] = threading.Lock()
 
     def wrap_position(self, pos: Position):
         # Used on every pos input
@@ -109,6 +109,11 @@ class Universe:
             lambda agent: (1 + agent.id) % 255 if agent is not None else 0,
         )(self.space)
         return displayable_array
+
+    def copy(self):
+        new_universe = Universe(self.height, self.width)
+        new_universe.genesis = self.genesis
+        new_universe.freeze = self.freeze
 
     def __getitem__(self, pos: Position):
         if isinstance(pos, Position):
