@@ -111,7 +111,7 @@ class Agent(threading.Thread):
                             self.energy -= 1
                     case Abilities.reproduce:
                         self.energy -= 1
-                        if self.energy >= 100:
+                        if self.energy >= self.phenome.energy_capacity // 2:
                             child = self.reproduce()
                             self.energy -= self.energy // 2
                             if child:
@@ -150,7 +150,7 @@ class Agent(threading.Thread):
 
         # Check possible positions
         # TODO use universe get_area?
-        
+
         possible_positions = []
         for y in range(-1, 2):
             for x in range(-1, 2):
@@ -164,7 +164,7 @@ class Agent(threading.Thread):
                 universe=self.universe,
                 initial_position=choice(possible_positions),
                 generation=self.generation + 1,
-                phenome=self.initial_phenome.copy(mutation=0),
+                phenome=self.initial_phenome.copy(),  # TODO Use phenome.mutate()
                 energy=self.energy // 2,
                 start_on_birth=True,
                 parents=[self],
@@ -176,6 +176,10 @@ class Agent(threading.Thread):
         self.death_date = self.universe.get_time()
         self.stop.set()
         print(f"Agent {self.id} died")
+
+    def copy(self):
+        # TODO
+        pass
 
     @property
     def array_path(self):
