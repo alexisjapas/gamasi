@@ -100,15 +100,15 @@ class Agent(threading.Thread):
                     case Abilities.idle:
                         self.energy += 2
                     case Abilities.move:
-                        self.energy -= 1
+                        self.energy -= 2
                         if self.move(
                             Position(
-                                randint(1, 1),
-                                randint(0, 0),
+                                randint(-1, 1),
+                                randint(-1, 1),
                                 genesis=self.universe.genesis,
                             )
                         ):
-                            self.energy -= 1
+                            self.energy -= 2
                     case Abilities.reproduce:
                         self.energy -= 1
                         if self.energy >= self.phenome.energy_capacity // 2:
