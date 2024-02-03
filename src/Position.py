@@ -14,7 +14,7 @@ class Position:
     def tuple(self):
         return (self.y, self.x)
 
-    def start_time(self, genesis):  # TODO make it callable once only
+    def start_time(self, genesis):
         self.genesis = genesis
         self.t = perf_counter_ns() - genesis
 
