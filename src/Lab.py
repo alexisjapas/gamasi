@@ -5,6 +5,7 @@ from time import sleep
 from matplotlib import pyplot as plt
 from math import ceil
 from enum import Enum
+from time import perf_counter_ns
 
 from .Agent import Agent
 from .Universe import Universe
@@ -67,14 +68,21 @@ class Lab:
             for pos in positions
         ]
 
-    def experiment(self, duration):
+    def experiment(self, max_duration):
         # Start
+        non_agents_threads = threading.active_count()
         self._start_agents()  # TODO all agents shall wait until starting
 
         # Run
-        while duration > 0:  # TODO Stop when all died?
+        start = perf_counter_ns()
+        while max_duration > 0 and threading.active_count() > non_agents_threads:
             sleep(0.1)
-            duration -= 0.1
+            max_duration -= 0.1
+        
+        for th in threading.enumerate():
+            if isinstance(th, Agent):
+                print(th)
+        print(f"Experiment max_duration: {perf_counter_ns() - start}")
 
         # Stop
         self.universe.freeze = True
@@ -108,6 +116,7 @@ class Lab:
 
     def generate_actions_timeline(self, time_step):
         # TODO maybe use copy()
+        # TODO call it from analyze
         # TODO look for a method to determine optimal time_step
         actives: list = [a for a in Agent.population.values() if a.path]
         inactives: list = [a for a in Agent.population.values() if not a.path]
