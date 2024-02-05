@@ -62,15 +62,15 @@ class Agent(threading.Thread):
                     self.die()
 
             # Debug
-            print(
-                f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
-            )
+            # print(
+            #     f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
+            # )
 
     def run(self):
         if not self.universe.freeze.is_set():
             if self.start_barrier:
                 self.start_barrier.wait()
-            print(f"Agent {self.id} start running")
+            # print(f"Agent {self.id} start running")
             # Birth
             if self.position.t is None:
                 # As universe genesis can be started here, the first value
@@ -176,7 +176,7 @@ class Agent(threading.Thread):
     def die(self):
         self.death_date = self.universe.get_time()
         self.stop.set()
-        print(f"Agent {self.id} died")
+        # print(f"Agent {self.id} died")
 
     def copy(self):
         # TODO
