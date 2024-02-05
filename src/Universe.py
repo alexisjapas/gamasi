@@ -8,29 +8,31 @@ from .Position import Position
 # TODO get space...
 class Universe:
     """
-    This class control & lock space & time
+    This class control and lock time, space and population
     """
 
     def __init__(self, height: int, width: int):
+        self.freeze: threading.Event = threading.Event()
+
+        # Time
+        self.genesis = perf_counter_ns()
+
+        # Space
         self.height: int = height
         self.width: int = width
-        self.genesis = perf_counter_ns()
-        self.freeze: bool = False  # TODO verify optimality
-        self.init_space()
-
-    def init_space(self):
-        # Space
         self.space: np.array = np.full(
             shape=(self.height, self.width), fill_value=None, dtype=object
         )
-
-        # Locks
         self.space_locks: np.array = np.empty(
             shape=(self.height, self.width), dtype=object
         )
         for y in range(self.height):
             for x in range(self.width):
                 self.space_locks[y, x] = threading.Lock()
+
+        # Population
+        self.population: dict = {}
+        self.population_lock: threading.Lock = threading.Lock()
 
     def wrap_position(self, pos: Position):
         # Used on every pos input
