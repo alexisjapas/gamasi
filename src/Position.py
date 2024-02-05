@@ -4,7 +4,7 @@ from time import perf_counter_ns
 
 # TODO I do not like using perf_counter_ns() instead of universe.get_time
 class Position:
-    def __init__(self, y: int, x: int, genesis: int=None):
+    def __init__(self, y: int, x: int, genesis: int = None):
         self.y = y
         self.x = x
         self.genesis = genesis
