@@ -32,6 +32,7 @@
                       ipykernel
                       black
                       pylint
+                      tqdm
                       matplotlib
                       numpy
                       imageio  # GIF rendering
