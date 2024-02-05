@@ -121,7 +121,6 @@ class Universe:
         if isinstance(pos, Position):
             item = self.space[pos.tuple]
         else:
-            print(pos, type(pos))
             item = self.space[pos]
         return item
 
