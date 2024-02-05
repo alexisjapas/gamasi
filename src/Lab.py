@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from math import ceil
 from enum import Enum
 from time import perf_counter_ns
+from tqdm import tqdm
 
 from .Universe import Universe
 from .Agent import Agent
@@ -18,64 +19,135 @@ class Distributions(Enum):
 
 class Lab:
     def experiment(
-        self, height: int, width: int, initial_population_count: int, max_duration: int
+        self,
+        height: int,
+        width: int,
+        initial_population_count: int,
+        max_duration: int,
+        verbose: bool = True,
     ) -> dict:
         assert initial_population_count <= height * width
 
+        # Init outputs
+        parameters = {
+            "height": height,
+            "width": width,
+            "initial_population_count": initial_population_count,
+            "max_duration": max_duration,
+        }
+        timings = {}
+
         # Universe
+        start_universe = perf_counter_ns()
+        if verbose:
+            print("Generating universe...", end="\t")
         universe = Universe(height=height, width=width)
+        timings["init_universe"] = perf_counter_ns() - start_universe
+        if verbose:
+            print(f": Done in {(timings['init_universe'] / 1e9):.3f} s")
 
         # Invoke population
-        self._invoke_population(universe, height, width, initial_population_count)
-        print(np.sum(universe.space != None))
+        self._invoke_initial_population(
+            universe, height, width, initial_population_count, verbose
+        )
         assert np.sum(universe.space != None) == initial_population_count
+        timings["invoke_initial_population"] = (
+            perf_counter_ns() - timings["init_universe"] - start_universe
+        )
 
         # Start population
         non_agents_threads = threading.active_count()
-        self._start_initial_population(universe)
+        self._start_initial_population(universe, verbose)
+        timings["start_initial_population"] = (
+            perf_counter_ns()
+            - timings["invoke_initial_population"]
+            - timings["init_universe"]
+            - start_universe
+        )
 
         # Run
-        start = perf_counter_ns()
-        while max_duration > 0 and threading.active_count() > non_agents_threads:
-            sleep(0.1)
-            max_duration -= 0.1
-
-        for th in threading.enumerate():
-            if isinstance(th, Agent):
-                print(th)
-        print(f"Experiment max_duration: {perf_counter_ns() - start}")
+        early_stop = False
+        start_running = perf_counter_ns()
+        max_duration -= max(0, int((start_running - start_universe) / 1e9))
+        for i in tqdm(
+            range(max_duration, 0, -1),
+            desc="Running simulation\t",
+            disable=not verbose,
+            colour="yellow",
+        ):
+            if threading.active_count() <= non_agents_threads:
+                if verbose:
+                    print(f"Simulation early stop\t: All entities died.")
+                early_stop = True
+                break
+            t = (perf_counter_ns() - start_running) / 1e9  # Avoiding time drift
+            sleep(1 + max_duration - i - t)
+        timings["run"] = (
+            perf_counter_ns()
+            - timings["start_initial_population"]
+            - timings["invoke_initial_population"]
+            - timings["init_universe"]
+            - start_universe
+        )
 
         # Stop
         universe.freeze.set()
-        self._stop_population(universe)
+        if not early_stop:
+            self._stop_population(universe, verbose)
+        timings["stop"] = (
+            (
+                perf_counter_ns()
+                - timings["run"]
+                - timings["start_initial_population"]
+                - timings["invoke_initial_population"]
+                - timings["init_universe"]
+                - start_universe
+            )
+            if early_stop
+            else 0
+        )
 
-        return {"universe": universe}
+        if verbose:
+            print("Simulation succeed...\t: Returning data...")
+        return {"parameters": parameters, "timings": timings, "universe": universe}
 
-    def _invoke_population(
+    def _generate_position(self, positions: list[Position], height: int, width: int):
+        new_pos = Position(
+            randint(0, height - 1),
+            randint(0, width - 1),
+        )
+        if new_pos not in positions:
+            return new_pos
+        else:
+            return self._generate_position(positions, height, width)
+
+    def _invoke_initial_population(
         self,
         universe: Universe,
         height: int,
         width: int,
         initial_population_count: int,
+        verbose: bool,
         distribution: Distributions = Distributions.random,
     ) -> None:
         positions = []
         match distribution:
             case Distributions.random:
-                while len(positions) < initial_population_count:
-                    new_pos = Position(
-                        randint(0, height - 1),
-                        randint(0, width - 1),
-                    )
-                    if new_pos not in positions:
-                        positions.append(new_pos)
+                for _ in tqdm(
+                    range(initial_population_count),
+                    desc="Generating positions\t",
+                    disable=not verbose,
+                    colour="magenta",
+                ):
+                    positions.append(self._generate_position(positions, height, width))
             case _:
                 raise ValueError(
                     f"Possible distributions: {[d.name for d in Distributions]}"
                 )
-        print(positions)
         start_barrier = threading.Barrier(parties=initial_population_count)
-        [
+        for pos in tqdm(
+            positions, "Invoking population\t", disable=not verbose, colour="blue"
+        ):
             Agent(
                 universe=universe,
                 initial_position=pos,
@@ -83,18 +155,25 @@ class Lab:
                 parents=None,
                 start_barrier=start_barrier,
             )
-            for pos in positions
-        ]
 
-    def _start_initial_population(self, universe) -> None:
+    def _start_initial_population(self, universe, verbose: bool) -> None:
         with universe.population_lock:
-            for agent in universe.population.values():
+            for agent in tqdm(
+                universe.population.values(),
+                desc="Starting population\t",
+                disable=not verbose,
+                colour="green",
+            ):
                 agent.start()
-            print("Agents started")
 
-    def _stop_population(self, universe) -> None:
+    def _stop_population(self, universe, verbose: bool) -> None:
         with universe.population_lock:  # TODO Add priority to this lock
-            for agent in universe.population.values():
+            for agent in tqdm(
+                universe.population.values(),
+                desc="Stopping population\t",
+                disable=not verbose,
+                colour="red",
+            ):
                 agent.stop.set()
 
     def analyze(self, n_viz=4):  # TODO Copy agents until analyse
