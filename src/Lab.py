@@ -7,8 +7,8 @@ from math import ceil
 from enum import Enum
 from time import perf_counter_ns
 
-from .Agent import Agent
 from .Universe import Universe
+from .Agent import Agent
 from .Position import Position
 
 
@@ -17,40 +17,55 @@ class Distributions(Enum):
 
 
 class Lab:
-    def __init__(self, height: int, width: int, init_population_count: int):
-        assert init_population_count <= height * width
+    def experiment(
+        self, height: int, width: int, initial_population_count: int, max_duration: int
+    ) -> dict:
+        assert initial_population_count <= height * width
 
         # Universe
-        self.universe = Universe(height=height, width=width)
+        universe = Universe(height=height, width=width)
 
-        # Population
-        self.init_population_count = init_population_count
-        self._invoke_population(init_population_count)
-        assert np.sum(self.universe.space != None) == init_population_count
+        # Invoke population
+        self._invoke_population(universe, height, width, initial_population_count)
+        print(np.sum(universe.space != None))
+        assert np.sum(universe.space != None) == initial_population_count
 
-    def _start_agents(self):
-        with Agent.lock:  # Lock births
-            for agent in Agent.population.values():
-                agent.start()
-            print("Agents started")
+        # Start population
+        non_agents_threads = threading.active_count()
+        self._start_initial_population(universe)
 
-    def _stop_agents(self):
-        with Agent.lock:
-            for agent in Agent.population.values():
-                agent.stop.set()
+        # Run
+        start = perf_counter_ns()
+        while max_duration > 0 and threading.active_count() > non_agents_threads:
+            sleep(0.1)
+            max_duration -= 0.1
+
+        for th in threading.enumerate():
+            if isinstance(th, Agent):
+                print(th)
+        print(f"Experiment max_duration: {perf_counter_ns() - start}")
+
+        # Stop
+        universe.freeze.set()
+        self._stop_population(universe)
+
+        return {"universe": universe}
 
     def _invoke_population(
         self,
-        init_population_count: int,
+        universe: Universe,
+        height: int,
+        width: int,
+        initial_population_count: int,
         distribution: Distributions = Distributions.random,
-    ) -> list[Agent]:
+    ) -> None:
         positions = []
         match distribution:
             case Distributions.random:
-                while len(positions) < init_population_count:
+                while len(positions) < initial_population_count:
                     new_pos = Position(
-                        randint(0, self.universe.height - 1),
-                        randint(0, self.universe.width - 1),
+                        randint(0, height - 1),
+                        randint(0, width - 1),
                     )
                     if new_pos not in positions:
                         positions.append(new_pos)
@@ -58,37 +73,29 @@ class Lab:
                 raise ValueError(
                     f"Possible distributions: {[d.name for d in Distributions]}"
                 )
+        print(positions)
+        start_barrier = threading.Barrier(parties=initial_population_count)
         [
             Agent(
-                universe=self.universe,
+                universe=universe,
                 initial_position=pos,
                 generation=0,
                 parents=None,
+                start_barrier=start_barrier,
             )
             for pos in positions
         ]
 
-    def experiment(self, max_duration):
-        # Start
-        non_agents_threads = threading.active_count()
-        self._start_agents()  # TODO all agents shall wait until starting
+    def _start_initial_population(self, universe) -> None:
+        with universe.population_lock:
+            for agent in universe.population.values():
+                agent.start()
+            print("Agents started")
 
-        # Run
-        start = perf_counter_ns()
-        while max_duration > 0 and threading.active_count() > non_agents_threads:
-            sleep(0.1)
-            max_duration -= 0.1
-        
-        for th in threading.enumerate():
-            if isinstance(th, Agent):
-                print(th)
-        print(f"Experiment max_duration: {perf_counter_ns() - start}")
-
-        # Stop
-        self.universe.freeze = True
-        self._stop_agents()
-
-        # return TODO the results of the experiment in order to run multiple experiments
+    def _stop_population(self, universe) -> None:
+        with universe.population_lock:  # TODO Add priority to this lock
+            for agent in universe.population.values():
+                agent.stop.set()
 
     def analyze(self, n_viz=4):  # TODO Copy agents until analyse
         # TODO  Add an argument of data (agents...) to analyze or analyze last one
@@ -132,7 +139,7 @@ class Lab:
                 a for a in inactives if a.death_date is None or time < a.death_date
             ]
             # Update time and position of active agents
-            
+
             for agent in [a for a in actives if a.path[0].t <= time]:
                 i = 0
                 while agent.path and agent.path[0].t <= time:
@@ -152,7 +159,6 @@ class Lab:
             for agent in actives + inactives:
                 if agent.position.t <= time:
                     frame[agent.position.y, agent.position.x] = agent.phenome.color
-            
 
             time += time_step
 
