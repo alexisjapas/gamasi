@@ -10,10 +10,6 @@ from .Position import Position
 
 
 class Agent(threading.Thread):
-    population: dict = {}
-    lock = threading.Lock()
-    count = 0
-
     def __init__(
         self,
         universe: Universe,
@@ -24,19 +20,21 @@ class Agent(threading.Thread):
         phenome: Phenome = None,
         birth_date: int = None,
         start_on_birth: bool = False,
+        start_barrier: threading.Barrier = None,
     ):
         super().__init__()
+        self.daemon = True
 
         # Agent properties TODO attributes structuring
         # Experiment related
         # Add to population dict
-        with Agent.lock:
-            self.id = Agent.count
-            Agent.count += 1
-        if not universe.freeze:
-            Agent.population[self.id] = self
-            self.universe = universe
+        self.universe = universe
+        if not universe.freeze.is_set():
+            with universe.population_lock:
+                self.id = len(universe.population)
+                universe.population[self.id] = self
             self.stop = threading.Event()
+            self.start_barrier = start_barrier
 
             # Agent's properties
             # Constants
@@ -54,11 +52,11 @@ class Agent(threading.Thread):
             self.path = [initial_position]  # TODO change it into an actions stacktrace
             self.children = []
 
-            # Autostart
+            # Adding to universe
             with universe.space_locks[initial_position.tuple]:
                 if self.universe.is_valid(initial_position):
                     self.universe[initial_position] = self
-                    if start_on_birth:
+                    if start_on_birth:  # Autostart
                         self.start()
                 else:
                     self.die()
@@ -69,26 +67,29 @@ class Agent(threading.Thread):
             )
 
     def run(self):
-        print(f"Agent {self.id} start running")
-        # Birth
-        if self.position.t is None:
-            # As universe genesis can be started here, the first value
-            # of the time dimension of the first activated agent
-            # is equivalent to the time of the call of the function
-            # TODO is this conceptually optimal?
-            self.position.start_time(genesis=self.universe.genesis)
-        if self.birth_date is None:  # Get the value of the first position it has
-            self.birth_date = self.path[0].t
+        if not self.universe.freeze.is_set():
+            if self.start_barrier:
+                self.start_barrier.wait()
+            print(f"Agent {self.id} start running")
+            # Birth
+            if self.position.t is None:
+                # As universe genesis can be started here, the first value
+                # of the time dimension of the first activated agent
+                # is equivalent to the time of the call of the function
+                # TODO is this conceptually optimal?
+                self.position.start_time(genesis=self.universe.genesis)
+            if self.birth_date is None:  # Get the value of the first position it has
+                self.birth_date = self.path[0].t
 
         # Lifetime
         while (
-            not self.stop.is_set() and not self.universe.freeze
+            not self.stop.is_set() and not self.universe.freeze.is_set()
         ):  # TODO rework energy loss
             # Reaction time set up to set agents speed dependent of their phenome instead of
             # the CPU core its thread is running on
             sleep(self.phenome.reaction_time)  # TODO rework
 
-            if not self.universe.freeze:
+            if not self.universe.freeze.is_set():
                 # Minimal energy loss
                 self.energy -= 1
 
