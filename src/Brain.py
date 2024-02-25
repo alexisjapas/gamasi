@@ -4,7 +4,10 @@ from enum import Enum
 
 class Abilities(Enum):
     idle = "idle"
-    move = "move"
+    move_bot = "move_bot"
+    move_top = "move_top"
+    move_left = "move_left"
+    move_right = "move_right"
     reproduce = "reproduce"
 
 
