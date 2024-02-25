@@ -81,7 +81,7 @@ class Lab:
                 early_stop = True
                 break
             t = (perf_counter_ns() - start_running) / 1e9  # Avoiding time drift
-            sleep(1 + max_duration - i - t)
+            sleep(max(1 + max_duration - i - t, 0))
         timings["run"] = (
             perf_counter_ns()
             - timings["start_initial_population"]
@@ -113,8 +113,7 @@ class Lab:
 
     def _generate_position(self, positions: list[Position], height: int, width: int):
         new_pos = Position(
-            randint(0, height - 1),
-            randint(0, width - 1),
+            y=randint(0, height - 1), x=randint(0, width - 1)
         )
         if new_pos not in positions:
             return new_pos
@@ -176,7 +175,13 @@ class Lab:
             ):
                 agent.stop.set()
 
-    def analyze(self, n_viz=4):  # TODO Copy agents until analyse
+    def analyze(self, simulation: dict):
+        for agent in simulation.universe.population:
+            pass
+
+    ##############################################################################
+
+    def vizuaanalyze(self, n_viz=4):  # TODO Copy agents until analyse
         # TODO  Add an argument of data (agents...) to analyze or analyze last one
         n_viz = min(n_viz, Agent.count)
 

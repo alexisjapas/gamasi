@@ -36,23 +36,24 @@ class Agent(threading.Thread):
             self.stop = threading.Event()
             self.start_barrier = start_barrier
 
-            # Agent's properties
             # Constants
             self.initial_phenome = phenome if phenome is not None else Phenome()
             self.generation = generation
             self.parents = parents
             # Set once
-            self.birth_date = birth_date  # TODO Shouldn't it be init here?
+            self.birth_date = birth_date if birth_date else self.universe.get_time()
             self.death_date = None
 
             # Evoluting ones
             self.phenome = self.initial_phenome.copy()
             self.energy = energy if energy else self.phenome.energy_capacity
             self.position = initial_position
-            self.path = [initial_position]  # TODO change it into an actions stacktrace
+            self.path = []
+            self.actions: list = []
             self.children = []
 
             # Adding to universe
+            self.birth_success = True
             with universe.space_locks[initial_position.tuple]:
                 if self.universe.is_valid(initial_position):
                     self.universe[initial_position] = self
@@ -60,6 +61,7 @@ class Agent(threading.Thread):
                         self.start()
                 else:
                     self.die()
+                    self.birth_success = False
 
             # Debug
             # print(
@@ -67,19 +69,11 @@ class Agent(threading.Thread):
             # )
 
     def run(self):
-        if not self.universe.freeze.is_set():
-            if self.start_barrier:
-                self.start_barrier.wait()
+        if self.start_barrier:
+            self.start_barrier.wait()
             # print(f"Agent {self.id} start running")
-            # Birth
-            if self.position.t is None:
-                # As universe genesis can be started here, the first value
-                # of the time dimension of the first activated agent
-                # is equivalent to the time of the call of the function
-                # TODO is this conceptually optimal?
-                self.position.start_time(genesis=self.universe.genesis)
-            if self.birth_date is None:  # Get the value of the first position it has
-                self.birth_date = self.path[0].t
+            self.birth_date = self.universe.get_time()
+        self.path.append((self.birth_date, self.position))
 
         # Lifetime
         while (
@@ -94,37 +88,48 @@ class Agent(threading.Thread):
                 self.energy -= 1
 
                 # Decision making taking into account environment and self
-                decision = self.phenome.brain(self._perceive_environment())
+                decision = self.phenome.brain(
+                    self.universe.get_area(self.position, self.phenome.scope)
+                )
+                decision_time = self.universe.get_time()
 
-                # Try to apply its decision
+                # Decision -> Action
+                action_success = False
                 match decision:
                     case Abilities.idle:
-                        self.energy += 2
-                    case Abilities.move:
-                        self.energy -= 2
-                        if self.move(
-                            Position(
-                                randint(-1, 1),
-                                randint(-1, 1),
-                                genesis=self.universe.genesis,
-                            )
-                        ):
-                            self.energy -= 2
+                        self.energy += 4
+                        action_success = True
+                    case Abilities.move_bot:
+                        self.energy -= 4
+                        if self.move(Position(1, 0)):
+                            self.energy -= 4
+                            action_success = True
+                    case Abilities.move_top:
+                        self.energy -= 4
+                        if self.move(Position(-1, 0)):
+                            self.energy -= 4
+                            action_success = True
+                    case Abilities.move_left:
+                        self.energy -= 4
+                        if self.move(Position(0, 1)):
+                            self.energy -= 4
+                            action_success = True
+                    case Abilities.move_right:
+                        self.energy -= 4
+                        if self.move(Position(0, -1)):
+                            self.energy -= 4
+                            action_success = True
                     case Abilities.reproduce:
                         self.energy -= 1
                         if self.energy >= self.phenome.energy_capacity // 2:
-                            child = self.reproduce()
                             self.energy -= self.energy // 2
-                            if child:
-                                self.children.append(child)
+                            action_success = self.reproduce()
+                self.actions.append((decision_time, decision, action_success))
 
                 # Energy boundings
                 if self.energy < 1:
                     self.die()
                 self.energy = min(self.energy, self.phenome.energy_capacity)
-
-    def _perceive_environment(self):
-        return self.universe.get_area(self.position, self.phenome.scope)
 
     def move(self, relative_pos: Position) -> bool:
         # TODO Add acceleration/velocity, manage it with universe time
@@ -147,31 +152,35 @@ class Agent(threading.Thread):
         return success
 
     def reproduce(self) -> None:  # TODO Multi-agents reproduction
-        child = None
+        birth_success = False
 
         # Check possible positions
-        # TODO use universe get_area?
+        # TODO use universe get_area
 
         possible_positions = []
         for y in range(-1, 2):
             for x in range(-1, 2):
-                pos = self.position + Position(y, x, self.universe.genesis)
+                pos = self.position + Position(y=y, x=x)
                 if self.universe.is_valid(pos):
                     possible_positions.append(pos)
 
         # Newborn to life if possible
         if possible_positions:
-            child = Agent(
-                universe=self.universe,
-                initial_position=choice(possible_positions),
-                generation=self.generation + 1,
-                phenome=self.initial_phenome.copy(),  # TODO Use phenome.mutate()
-                energy=self.energy // 2,
-                start_on_birth=True,
-                parents=[self],
-            )
+            child_pos = choice(possible_positions)
+            if self.universe.is_valid(child_pos):
+                child = Agent(
+                    universe=self.universe,
+                    initial_position=child_pos,
+                    generation=self.generation + 1,
+                    phenome=self.initial_phenome.copy(),  # TODO Use phenome.mutate()
+                    energy=self.energy // 2,
+                    start_on_birth=True,
+                    parents=[self],
+                )
+                self.children.append(child)
+                birth_success = child.birth_success
 
-        return child
+        return birth_success
 
     def die(self):
         self.death_date = self.universe.get_time()
@@ -196,7 +205,7 @@ class Agent(threading.Thread):
         ID = f"ID: {self.id:-3d}"
         GEN = f"GEN: {self.generation:-3d}"
         BIRTH = f"BIRTH: {int(self.birth_date/1e6):-6d} ms"
-        death = 0 if self.death_date is None else self.death_date
+        death = -1 if self.death_date is None else self.death_date
         DEATH = f"DEATH: {int(death/1e6):-6d} ms"
         POS = f"POS: {self.position}"
         return f"{ID} | {GEN} | {BIRTH} | {DEATH} | {POS}"
