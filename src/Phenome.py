@@ -6,7 +6,7 @@ from .Brain import Brain
 class Phenome:
     def __init__(
         self,
-        reaction_time: float = 1e-5,
+        reaction_time: float = 1e-4,
         speed: int = 1e5,
         energy_capacity: int = 1e2,
         scope: int = 3,
