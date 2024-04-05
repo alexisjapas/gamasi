@@ -23,7 +23,8 @@ class Lab:
         height: int,
         width: int,
         initial_population_count: int,
-        max_duration: int,
+        max_total_duration: int,
+        max_simulation_duration: int,
         verbose: bool = True,
     ) -> dict:
         assert initial_population_count <= height * width
@@ -33,7 +34,8 @@ class Lab:
             "height": height,
             "width": width,
             "initial_population_count": initial_population_count,
-            "max_duration": max_duration,
+            "max_total_duration": max_total_duration,
+            "max_simulation_duration": max_simulation_duration
         }
         timings = {}
 
@@ -49,7 +51,7 @@ class Lab:
         self._invoke_initial_population(
             universe, height, width, initial_population_count, verbose
         )
-        assert np.sum(universe.space != None) == initial_population_count
+        assert np.sum(universe.space != None) == initial_population_count  # Positions are uniques
         timings["invoke_initial_population"] = perf_counter_ns() - universe.genesis
 
         # Start population
@@ -60,9 +62,10 @@ class Lab:
         # Run
         early_stop = False
         start_running = perf_counter_ns()
-        max_duration -= max(0, int((start_running - universe.genesis) / 1e9))
+        total_duration_remaining = max_total_duration - max(0, int((start_running - universe.genesis) / 1e9))
+        simulation_duration = min(total_duration_remaining, max_simulation_duration)
         for i in tqdm(
-            range(max_duration, 0, -1),
+            range(simulation_duration, 0, -1),
             desc="Running simulation\t",
             disable=not verbose,
             colour="yellow",
@@ -73,17 +76,25 @@ class Lab:
                 early_stop = True
                 break
             t = (perf_counter_ns() - start_running) / 1e9  # Avoiding time drift
-            sleep(max(1 + max_duration - i - t, 0))
+            sleep(max(1 + simulation_duration - i - t, 0))
         timings["run"] = perf_counter_ns() - universe.genesis
 
         # Stop
         universe.freeze.set()
-        if not early_stop:
-            self._stop_population(universe, verbose)
+        first_iteration = True
+        active_agents = threading.active_count() - non_agents_threads
+        while active_agents > 0:
+            if first_iteration:
+                print(f"Interrupting population\t: {active_agents}...")
+                first_iteration = False
+            else:
+                print(f"\t\t\t| {active_agents}...")
+            sleep(1e-1)
+            active_agents = threading.active_count() - non_agents_threads
         timings["stop"] = perf_counter_ns() - universe.genesis
 
         if verbose:
-            print("Simulation succeed...\t: Returning data...")
+            print(f"Simulation succeed...\t: Returning data... Done in {(timings['stop'] / 1e9):.3f} s")
 
         return {"parameters": parameters, "timings": timings, "universe": universe}
 

@@ -127,6 +127,9 @@ class Agent(threading.Thread):
                 self.die()
             self.energy = min(self.energy, self.phenome.energy_capacity)
 
+        # Stop the agent for monitoring
+        self.stop.set()
+
     def move(self, relative_pos: Position) -> bool:
         # TODO Add acceleration/velocity, manage it with universe time
         # for example
