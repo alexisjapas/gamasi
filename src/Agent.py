@@ -23,50 +23,48 @@ class Agent(threading.Thread):
         start_barrier: threading.Barrier = None,
     ):
         super().__init__()
-        self.daemon = True
 
-        # Agent properties TODO attributes structuring
+        # Agent properties
         # Experiment related
         # Add to population dict
         self.universe = universe
-        if not universe.freeze.is_set():
-            with universe.population_lock:
-                self.id = len(universe.population)
-                universe.population[self.id] = self
-            self.stop = threading.Event()
-            self.start_barrier = start_barrier
+        with universe.population_lock:
+            self.id = len(universe.population)
+            universe.population[self.id] = self
+        self.stop = threading.Event()
+        self.start_barrier = start_barrier
 
-            # Constants
-            self.initial_phenome = phenome if phenome is not None else Phenome()
-            self.generation = generation
-            self.parents = parents
-            # Set once
-            self.birth_date = birth_date if birth_date else self.universe.get_time()
-            self.death_date = None
+        # Constants
+        self.initial_phenome = phenome if phenome is not None else Phenome()
+        self.generation = generation
+        self.parents = parents
+        # Set once
+        self.birth_date = birth_date if birth_date else self.universe.get_time()
+        self.death_date = None
 
-            # Evoluting ones
-            self.phenome = self.initial_phenome.copy()
-            self.energy = energy if energy else self.phenome.energy_capacity
-            self.position = initial_position
-            self.path = []
-            self.actions: list = []
-            self.children = []
+        # Evolutives
+        self.phenome = self.initial_phenome.copy()
+        self.energy = energy if energy else self.phenome.energy_capacity
+        self.position = initial_position
+        self.path = []
+        self.actions: list = []
+        self.children = []
 
-            # Adding to universe
-            self.birth_success = True
-            with universe.space_locks[initial_position.tuple]:
-                if self.universe.is_valid(initial_position):
-                    self.universe[initial_position] = self
-                    if start_on_birth:  # Autostart
-                        self.start()
-                else:
-                    self.die()
-                    self.birth_success = False
+        # Adding to universe
+        self.birth_success = True
+        with universe.space_locks[initial_position.tuple]:
+            if self.universe.is_valid(initial_position):
+                self.universe[initial_position] = self
+                if start_on_birth:  # Autostart
+                    self.start()
+            else:
+                self.die()
+                self.birth_success = False
 
-            # Debug
-            # print(
-            #     f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
-            # )
+        # Debug
+        # print(
+        #     f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
+        # )
 
     def run(self):
         if self.start_barrier:
@@ -78,58 +76,56 @@ class Agent(threading.Thread):
         # Lifetime
         while (
             not self.stop.is_set() and not self.universe.freeze.is_set()
-        ):  # TODO rework energy loss
-            # Reaction time set up to set agents speed dependent of their phenome instead of
+        ):  # Reaction time set up to set agents speed dependent of their phenome instead of
             # the CPU core its thread is running on
             sleep(self.phenome.reaction_time)  # TODO rework
 
-            if not self.universe.freeze.is_set():
-                # Minimal energy loss
-                self.energy -= 1
+            # Minimal energy loss
+            self.energy -= 1
 
-                # Decision making taking into account environment and self
-                decision = self.phenome.brain(
-                    self.universe.get_area(self.position, self.phenome.scope)
-                )
-                decision_time = self.universe.get_time()
+            # Decision making taking into account environment and self
+            decision = self.phenome.brain(
+                self.universe.get_area(self.position, self.phenome.scope)
+            )
+            decision_time = self.universe.get_time()
 
-                # Decision -> Action
-                action_success = False
-                match decision:
-                    case Abilities.idle:
-                        self.energy += 4
+            # Decision -> Action
+            action_success = False
+            match decision:
+                case Abilities.idle:
+                    self.energy += 4
+                    action_success = True
+                case Abilities.move_bot:
+                    self.energy -= 4
+                    if self.move(Position(1, 0)):
+                        self.energy -= 4
                         action_success = True
-                    case Abilities.move_bot:
+                case Abilities.move_top:
+                    self.energy -= 4
+                    if self.move(Position(-1, 0)):
                         self.energy -= 4
-                        if self.move(Position(1, 0)):
-                            self.energy -= 4
-                            action_success = True
-                    case Abilities.move_top:
+                        action_success = True
+                case Abilities.move_left:
+                    self.energy -= 4
+                    if self.move(Position(0, 1)):
                         self.energy -= 4
-                        if self.move(Position(-1, 0)):
-                            self.energy -= 4
-                            action_success = True
-                    case Abilities.move_left:
+                        action_success = True
+                case Abilities.move_right:
+                    self.energy -= 4
+                    if self.move(Position(0, -1)):
                         self.energy -= 4
-                        if self.move(Position(0, 1)):
-                            self.energy -= 4
-                            action_success = True
-                    case Abilities.move_right:
-                        self.energy -= 4
-                        if self.move(Position(0, -1)):
-                            self.energy -= 4
-                            action_success = True
-                    case Abilities.reproduce:
-                        self.energy -= 1
-                        if self.energy >= self.phenome.energy_capacity // 2:
-                            self.energy -= self.energy // 2
-                            action_success = self.reproduce()
-                self.actions.append((decision_time, decision, action_success))
+                        action_success = True
+                case Abilities.reproduce:
+                    self.energy -= 1
+                    if self.energy >= self.phenome.energy_capacity // 2:
+                        self.energy -= self.energy // 2
+                        action_success = self.reproduce()
+            self.actions.append((decision_time, decision, action_success))
 
-                # Energy boundings
-                if self.energy < 1:
-                    self.die()
-                self.energy = min(self.energy, self.phenome.energy_capacity)
+            # Energy boundings
+            if self.energy < 1:
+                self.die()
+            self.energy = min(self.energy, self.phenome.energy_capacity)
 
     def move(self, relative_pos: Position) -> bool:
         # TODO Add acceleration/velocity, manage it with universe time
