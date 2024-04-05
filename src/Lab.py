@@ -38,11 +38,10 @@ class Lab:
         timings = {}
 
         # Universe
-        start_universe = perf_counter_ns()
         if verbose:
             print("Generating universe...", end="\t")
         universe = Universe(height=height, width=width)
-        timings["init_universe"] = perf_counter_ns() - start_universe
+        timings["init_universe"] = perf_counter_ns() - universe.genesis
         if verbose:
             print(f": Done in {(timings['init_universe'] / 1e9):.3f} s")
 
@@ -51,24 +50,17 @@ class Lab:
             universe, height, width, initial_population_count, verbose
         )
         assert np.sum(universe.space != None) == initial_population_count
-        timings["invoke_initial_population"] = (
-            perf_counter_ns() - timings["init_universe"] - start_universe
-        )
+        timings["invoke_initial_population"] = perf_counter_ns() - universe.genesis
 
         # Start population
         non_agents_threads = threading.active_count()
         self._start_initial_population(universe, verbose)
-        timings["start_initial_population"] = (
-            perf_counter_ns()
-            - timings["invoke_initial_population"]
-            - timings["init_universe"]
-            - start_universe
-        )
+        timings["start_initial_population"] = perf_counter_ns() - universe.genesis
 
         # Run
         early_stop = False
         start_running = perf_counter_ns()
-        max_duration -= max(0, int((start_running - start_universe) / 1e9))
+        max_duration -= max(0, int((start_running - universe.genesis) / 1e9))
         for i in tqdm(
             range(max_duration, 0, -1),
             desc="Running simulation\t",
@@ -82,33 +74,17 @@ class Lab:
                 break
             t = (perf_counter_ns() - start_running) / 1e9  # Avoiding time drift
             sleep(max(1 + max_duration - i - t, 0))
-        timings["run"] = (
-            perf_counter_ns()
-            - timings["start_initial_population"]
-            - timings["invoke_initial_population"]
-            - timings["init_universe"]
-            - start_universe
-        )
+        timings["run"] = perf_counter_ns() - universe.genesis
 
         # Stop
         universe.freeze.set()
         if not early_stop:
             self._stop_population(universe, verbose)
-        timings["stop"] = (
-            (
-                perf_counter_ns()
-                - timings["run"]
-                - timings["start_initial_population"]
-                - timings["invoke_initial_population"]
-                - timings["init_universe"]
-                - start_universe
-            )
-            if early_stop
-            else 0
-        )
+        timings["stop"] = perf_counter_ns() - universe.genesis
 
         if verbose:
             print("Simulation succeed...\t: Returning data...")
+
         return {"parameters": parameters, "timings": timings, "universe": universe}
 
     def _generate_position(self, positions: list[Position], height: int, width: int):
@@ -176,6 +152,7 @@ class Lab:
                 agent.stop.set()
 
     def analyze(self, simulation: dict):
+        print(simulation)
         for agent in simulation.universe.population:
             pass
 
