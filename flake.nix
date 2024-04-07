@@ -36,6 +36,7 @@
                       tqdm
                       matplotlib
                       numpy
+                      pandas
                       imageio  # GIF rendering
                     ])))
                   ];
