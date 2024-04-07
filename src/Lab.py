@@ -1,11 +1,11 @@
 import threading
 import numpy as np
-from random import shuffle, randint
+import pandas as pd
+from random import randint
 from time import sleep
 from matplotlib import pyplot as plt
 from math import ceil
 from enum import Enum
-from time import perf_counter_ns
 from tqdm import tqdm
 
 from .Universe import Universe
@@ -18,6 +18,7 @@ class Distributions(Enum):
 
 
 class Lab:
+    # SIMULATION
     def experiment(
         self,
         height: int,
@@ -35,7 +36,7 @@ class Lab:
             "width": width,
             "initial_population_count": initial_population_count,
             "max_total_duration": max_total_duration,
-            "max_simulation_duration": max_simulation_duration
+            "max_simulation_duration": max_simulation_duration,
         }
         timings = {}
 
@@ -43,7 +44,7 @@ class Lab:
         if verbose:
             print("Generating universe...", end="\t")
         universe = Universe(height=height, width=width)
-        timings["init_universe"] = perf_counter_ns() - universe.genesis
+        timings["init_universe"] = universe.get_time()
         if verbose:
             print(f": Done in {(timings['init_universe'] / 1e9):.3f} s")
 
@@ -51,18 +52,20 @@ class Lab:
         self._invoke_initial_population(
             universe, height, width, initial_population_count, verbose
         )
-        assert np.sum(universe.space != None) == initial_population_count  # Positions are uniques
-        timings["invoke_initial_population"] = perf_counter_ns() - universe.genesis
+        assert (
+            np.sum(universe.space != None) == initial_population_count
+        )  # Positions are uniques
+        timings["invoke_initial_population"] = universe.get_time()
 
         # Start population
         non_agents_threads = threading.active_count()
         self._start_initial_population(universe, verbose)
-        timings["start_initial_population"] = perf_counter_ns() - universe.genesis
+        timings["start_initial_population"] = universe.get_time()
 
         # Run
         early_stop = False
-        start_running = perf_counter_ns()
-        total_duration_remaining = max_total_duration - max(0, int((start_running - universe.genesis) / 1e9))
+        start_running = universe.get_time()
+        total_duration_remaining = max_total_duration - max(0, int(start_running / 1e9))
         simulation_duration = min(total_duration_remaining, max_simulation_duration)
         for i in tqdm(
             range(simulation_duration, 0, -1),
@@ -75,9 +78,9 @@ class Lab:
                     print(f"Simulation early stop\t: All entities died.")
                 early_stop = True
                 break
-            t = (perf_counter_ns() - start_running) / 1e9  # Avoiding time drift
+            t = (universe.get_time() - start_running) / 1e9  # Avoiding time drift
             sleep(max(1 + simulation_duration - i - t, 0))
-        timings["run"] = perf_counter_ns() - universe.genesis
+        timings["run"] = universe.get_time()
 
         # Stop
         universe.freeze.set()
@@ -91,17 +94,18 @@ class Lab:
                 print(f"\t\t\t| {active_agents}...")
             sleep(1e-1)
             active_agents = threading.active_count() - non_agents_threads
-        timings["stop"] = perf_counter_ns() - universe.genesis
+        universe.culmination = universe.get_time()
+        timings["stop"] = universe.culmination
 
         if verbose:
-            print(f"Simulation succeed...\t: Returning data... Done in {(timings['stop'] / 1e9):.3f} s")
+            print(
+                f"Simulation succeed...\t: Returning data... Done in {(timings['stop'] / 1e9):.3f} s"
+            )
 
         return {"parameters": parameters, "timings": timings, "universe": universe}
 
     def _generate_position(self, positions: list[Position], height: int, width: int):
-        new_pos = Position(
-            y=randint(0, height - 1), x=randint(0, width - 1)
-        )
+        new_pos = Position(y=randint(0, height - 1), x=randint(0, width - 1))
         if new_pos not in positions:
             return new_pos
         else:
@@ -162,10 +166,62 @@ class Lab:
             ):
                 agent.stop.set()
 
-    def analyze(self, simulation: dict):
-        print(simulation)
-        for agent in simulation.universe.population:
+    # ANALYSIS
+    def gather_data(self, simulation: dict, verbose: bool = True) -> dict:
+        # TODO copy the universe to not alter it
+        # TODO Compute med
+        # Individuals statistics
+        agents_statistics = []
+        for a_id, agent in tqdm(
+            simulation["universe"].population.items(),
+            desc="Computing agents statistics\t",
+            disable=not verbose,
+            colour="red",
+        ):
+            agents_statistics.append(agent.get_data())
+
+        agents_statistics_df = pd.DataFrame(agents_statistics)
+        agents_statistics_df.set_index("id", inplace=True)
+
+        # Population statistics
+        population_statistics = {
+            "mean_lifespan": int(agents_statistics_df["lifespan"].mean()),
+            "mean_children_count": agents_statistics_df["children_count"].mean(),
+            "mean_birth_success": agents_statistics_df["birth_success"].mean(),
+            "mean_travelled_distance": agents_statistics_df[
+                "travelled_distance"
+            ].mean(),
+            "mean_actions_count": agents_statistics_df["actions_count"].mean(),
+            "mean_decision_duration": int(
+                agents_statistics_df["mean_decision_duration"].mean()
+            ),
+            "mean_action_duration": int(
+                agents_statistics_df["mean_action_duration"].mean()
+            ),
+            "mean_round_duration": int(
+                agents_statistics_df["mean_round_duration"].mean()
+            ),
+        }
+
+        # Timelines TODO
+        actions_timeline = []
+        positions_timeline = []
+        for a_id, agent in tqdm(
+            simulation["universe"].population.items(),
+            desc="Gathering timelines\t\t",
+            disable=not verbose,
+            colour="red",
+        ):
             pass
+
+        return {
+            "agents_statistics": agents_statistics_df,
+            "population_statistics": population_statistics,
+            "actions": actions_timeline,
+            "positions": positions_timeline,
+        }
+
+    # VISUALIZATION
 
     ##############################################################################
 

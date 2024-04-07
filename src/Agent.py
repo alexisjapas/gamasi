@@ -9,7 +9,7 @@ from .Universe import Universe
 from .Position import Position
 
 
-class Agent(threading.Thread):
+class Agent(threading.Thread):  # TODO make this ABC
     def __init__(
         self,
         universe: Universe,
@@ -21,8 +21,10 @@ class Agent(threading.Thread):
         birth_date: int = None,
         start_on_birth: bool = False,
         start_barrier: threading.Barrier = None,
+        debug: bool = False,
     ):
         super().__init__()
+        self.debug = debug
 
         # Agent properties
         # Experiment related
@@ -62,26 +64,30 @@ class Agent(threading.Thread):
                 self.birth_success = False
 
         # Debug
-        # print(
-        #     f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
-        # )
+        if self.debug:
+            print(
+                f"Agent {self.id} initialized by {'Universe' if parents is None else parents}"
+            )
 
     def run(self):
         if self.start_barrier:
             self.start_barrier.wait()
-            # print(f"Agent {self.id} start running")
             self.birth_date = self.universe.get_time()
+
+        if self.debug:
+            print(f"Agent {self.id} start running")
+
         self.path.append((self.birth_date, self.position))
 
         # Lifetime
-        while (
-            not self.stop.is_set() and not self.universe.freeze.is_set()
-        ):  # Reaction time set up to set agents speed dependent of their phenome instead of
-            # the CPU core its thread is running on
-            sleep(self.phenome.reaction_time)  # TODO rework
-
+        while not self.stop.is_set() and not self.universe.freeze.is_set():
             # Minimal energy loss
             self.energy -= 1
+
+            # Reaction time set up to set agents speed dependent of their phenome instead of
+            # the CPU core its thread is running on
+            sleep(self.phenome.reaction_time)  # TODO rework
+            reaction_time = self.universe.get_time()
 
             # Decision making taking into account environment and self
             decision = self.phenome.brain(
@@ -93,34 +99,42 @@ class Agent(threading.Thread):
             action_success = False
             match decision:
                 case Abilities.idle:
-                    self.energy += 4
+                    self.energy += 10
                     action_success = True
                 case Abilities.move_bot:
-                    self.energy -= 4
+                    self.energy -= 1
                     if self.move(Position(1, 0)):
-                        self.energy -= 4
+                        self.energy -= 2
                         action_success = True
                 case Abilities.move_top:
-                    self.energy -= 4
+                    self.energy -= 1
                     if self.move(Position(-1, 0)):
-                        self.energy -= 4
+                        self.energy -= 2
                         action_success = True
                 case Abilities.move_left:
-                    self.energy -= 4
+                    self.energy -= 1
                     if self.move(Position(0, 1)):
-                        self.energy -= 4
+                        self.energy -= 2
                         action_success = True
                 case Abilities.move_right:
-                    self.energy -= 4
+                    self.energy -= 1
                     if self.move(Position(0, -1)):
-                        self.energy -= 4
+                        self.energy -= 2
                         action_success = True
                 case Abilities.reproduce:
                     self.energy -= 1
                     if self.energy >= self.phenome.energy_capacity // 2:
                         self.energy -= self.energy // 2
                         action_success = self.reproduce()
-            self.actions.append((decision_time, decision, action_success))
+            self.actions.append(
+                (
+                    reaction_time,
+                    decision_time,
+                    decision,
+                    self.universe.get_time(),
+                    action_success,
+                )
+            )
 
             # Energy boundings
             if self.energy < 1:
@@ -130,6 +144,7 @@ class Agent(threading.Thread):
         # Stop the agent for monitoring
         self.stop.set()
 
+    # SIMULATION
     def move(self, relative_pos: Position) -> bool:
         # TODO Add acceleration/velocity, manage it with universe time
         # for example
@@ -146,7 +161,7 @@ class Agent(threading.Thread):
 
                 # Update self attributes
                 self.position = new_pos
-                self.path.append(new_pos)
+                self.path.append((self.universe.get_time(), new_pos))
 
         return success
 
@@ -184,19 +199,67 @@ class Agent(threading.Thread):
     def die(self):
         self.death_date = self.universe.get_time()
         self.stop.set()
-        # print(f"Agent {self.id} died")
+        if self.debug:
+            print(f"Agent {self.id} died")
 
+    # UTILITIES
     def copy(self):
         # TODO
         pass
 
+    # DATA
+    def get_data(self) -> dict:
+        # Attributes and lifespan
+        statistics = {
+            "id": self.id,
+            "generation": self.generation,
+            "parents_count": 1 if self.parents is None else len(self.parents),
+            "dead": False if self.death_date is None else True,
+            "lifespan": self.universe.culmination - self.birth_date
+            if self.death_date is None
+            else self.death_date - self.birth_date,
+            "children_count": len(self.children),
+            "birth_success": self.birth_success,
+        }
+
+        # Activity track
+        statistics["travelled_distance"] = len(self.path)
+        statistics["actions_count"] = len(self.actions)
+        decision_durations = [a[1] - a[0] for a in self.actions]
+        statistics["mean_decision_duration"] = (
+            None
+            if len(self.actions) < 1
+            else sum(decision_durations) / len(decision_durations)
+        )
+        action_durations = [a[3] - a[1] for a in self.actions]
+        statistics["mean_action_duration"] = (
+            None
+            if len(self.actions) < 1
+            else sum(action_durations) / len(action_durations)
+        )
+
+        # Meta-statistics
+        round_timers = [a[0] for a in self.actions]
+        round_durations = [
+            round_timers[i + 1] - round_timers[i] for i in range(len(round_timers) - 1)
+        ]
+        statistics["mean_round_duration"] = (
+            None
+            if len(self.actions) < 2
+            else sum(round_durations) / len(round_durations)
+        )
+
+        return statistics
+
+    # VISUALIZATION
     @property
-    def array_path(self):
+    def array_path(self):  # TODO rework
         array_path = np.zeros((self.universe.height, self.universe.width))
         for step in self.path:
             array_path[step.tuple] = 255
         return array_path
 
+    # REPRESENTATION
     def __repr__(self):
         return f"a_{self.id}"
 
