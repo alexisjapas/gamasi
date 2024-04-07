@@ -184,24 +184,28 @@ class Lab:
         agents_statistics_df.set_index("id", inplace=True)
 
         # Population statistics
-        population_statistics = {
-            "mean_lifespan": int(agents_statistics_df["lifespan"].mean()),
-            "mean_children_count": agents_statistics_df["children_count"].mean(),
-            "mean_birth_success": agents_statistics_df["birth_success"].mean(),
-            "mean_travelled_distance": agents_statistics_df[
-                "travelled_distance"
-            ].mean(),
-            "mean_actions_count": agents_statistics_df["actions_count"].mean(),
-            "mean_decision_duration": int(
-                agents_statistics_df["mean_decision_duration"].mean()
-            ),
-            "mean_action_duration": int(
-                agents_statistics_df["mean_action_duration"].mean()
-            ),
-            "mean_round_duration": int(
-                agents_statistics_df["mean_round_duration"].mean()
-            ),
-        }
+        computed_data = [
+            "lifespan",
+            "children_count",
+            "birth_success",
+            "travelled_distance",
+            "actions_count",
+            "mean_decision_duration",
+            "mean_action_duration",
+            "mean_round_duration",
+        ]
+        population_statistics = []
+        for cp in computed_data:
+            population_statistics.append(
+                {
+                    "data": cp,
+                    "mean": agents_statistics_df[cp].mean(),
+                    "median": agents_statistics_df[cp].median(),
+                    "std": agents_statistics_df[cp].std(),
+                }
+            )
+        population_statistics_df = pd.DataFrame(population_statistics)
+        population_statistics_df.set_index("data", inplace=True)
 
         # Timelines TODO
         actions_timeline = []
@@ -216,7 +220,7 @@ class Lab:
 
         return {
             "agents_statistics": agents_statistics_df,
-            "population_statistics": population_statistics,
+            "population_statistics": population_statistics_df,
             "actions": actions_timeline,
             "positions": positions_timeline,
         }
