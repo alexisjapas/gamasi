@@ -2,7 +2,7 @@ from random import random, choices
 from enum import Enum
 
 
-class Abilities(Enum):
+class Abilities(Enum):  # TODO Create an abstract Action class to implement birth and death
     idle = "idle"
     move_bot = "move_bot"
     move_top = "move_top"
