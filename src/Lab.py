@@ -4,6 +4,7 @@ import pandas as pd
 from random import randint
 from time import sleep
 from matplotlib import pyplot as plt
+import seaborn as sns
 from math import ceil
 from enum import Enum
 from tqdm import tqdm
@@ -169,7 +170,6 @@ class Lab:
     # ANALYSIS
     def gather_data(self, simulation: dict, verbose: bool = True) -> dict:
         # TODO copy the universe to not alter it
-        # TODO Compute med
         # Individuals statistics
         agents_statistics = []
         for a_id, agent in tqdm(
@@ -199,6 +199,8 @@ class Lab:
             population_statistics.append(
                 {
                     "data": cp,
+                    "min": agents_statistics_df[cp].min(),
+                    "max": agents_statistics_df[cp].max(),
                     "mean": agents_statistics_df[cp].mean(),
                     "median": agents_statistics_df[cp].median(),
                     "std": agents_statistics_df[cp].std(),
@@ -226,73 +228,66 @@ class Lab:
         }
 
     # VISUALIZATION
+    def plot_generation_stats(self, data):
+        # Set up subplots
+        fig, axes = plt.subplots(2, 3, figsize=(14, 10))
 
-    ##############################################################################
+        # Plotting the count of agents for each generation
+        ax = axes[0, 0]
+        sns.countplot(x="generation", data=data["agents_statistics"], ax=ax)
+        ax.set_title("Count of Agents for Each Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Count of Agents")
 
-    def vizuaanalyze(self, n_viz=4):  # TODO Copy agents until analyse
-        # TODO  Add an argument of data (agents...) to analyze or analyze last one
-        n_viz = min(n_viz, Agent.count)
+        # Proportion of dead agents for each generation
+        ax = axes[0, 1]
+        proportion_dead = data["agents_statistics"].groupby("generation")["dead"].mean()
+        sns.barplot(x=proportion_dead.index, y=proportion_dead.values, ax=ax)
+        ax.set_title("Proportion of Dead Agents for Each Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Proportion of Dead Agents")
 
-        # Some stats
-        print(f"Total agents: {Agent.count}")
-        paths_lengths = [len(agent.path) for agent in Agent.population.values()]
-        paths_lengths.sort()
-        path_len_mean = int(sum(paths_lengths) / len(paths_lengths))
-        print(f"Agents mean path len = {path_len_mean} px")
-        path_len_median = paths_lengths[len(paths_lengths) // 2]
-        print(f"Agents median path len = {path_len_median} px")
+        # Lifespan
+        ax = axes[0, 2]
+        sns.violinplot(
+            x="generation", y="lifespan", data=data["agents_statistics"], ax=ax
+        )
+        ax.set_title("Lifespan vs Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Lifespan")
 
-        # Display paths of some agents
-        agents = list([a for a in Agent.population.values()])
-        fig = plt.figure()
-        n_rows = ceil(n_viz ** (1 / 2))
-        n_cols = ceil(n_viz / n_rows)
-        for i in range(n_viz):
-            plt.subplot(n_rows, n_cols, i + 1)
-            plt.imshow(agents[i].array_path)
-            plt.title(f"Agent's n°{agents[i].id} path")
-            plt.axis("off")
+        # Children count
+        ax = axes[1, 0]
+        sns.violinplot(
+            x="generation", y="children_count", data=data["agents_statistics"], ax=ax
+        )
+        ax.set_title("Children count vs Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Children count")
 
-    def generate_actions_timeline(self, time_step):
-        # TODO maybe use copy()
-        # TODO call it from analyze
-        # TODO look for a method to determine optimal time_step
-        actives: list = [a for a in Agent.population.values() if a.path]
-        inactives: list = [a for a in Agent.population.values() if not a.path]
-        time = min([a.path[0].t for a in actives])
-        self.universe.init_space()  # Reset universe space
+        # Actions count
+        ax = axes[1, 1]
+        sns.violinplot(
+            x="generation", y="actions_count", data=data["agents_statistics"], ax=ax
+        )
+        ax.set_title("Actions count vs Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Actions count")
 
-        while actives:
-            # Removing deads
-            actives: list = [
-                a for a in actives if a.death_date is None or time < a.death_date
-            ]
-            inactives: list = [
-                a for a in inactives if a.death_date is None or time < a.death_date
-            ]
-            # Update time and position of active agents
+        # Median round duration
+        ax = axes[1, 2]
+        sns.violinplot(
+            x="generation",
+            y="median_round_duration",
+            data=data["agents_statistics"],
+            ax=ax,
+        )
+        ax.set_title("Median round duration vs Generation")
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Median round duration")
 
-            for agent in [a for a in actives if a.path[0].t <= time]:
-                i = 0
-                while agent.path and agent.path[0].t <= time:
-                    i += 1
-                    agent.position = agent.path.pop(0)
-                if i > 1:  # TODO
-                    print("JUMP")
-                if not agent.path:
-                    actives.remove(agent)
-                    inactives.append(agent)
+        # Adjust layout
+        plt.tight_layout()
 
-            # Display agents
-            frame = np.ones(
-                (self.universe.space.shape[0], self.universe.space.shape[1], 3),
-                dtype=np.uint8,
-            )
-            for agent in actives + inactives:
-                if agent.position.t <= time:
-                    frame[agent.position.y, agent.position.x] = agent.phenome.color
-
-            time += time_step
-
-            # Yield
-            yield frame
+        # Show plot
+        plt.show()

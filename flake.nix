@@ -37,6 +37,7 @@
                       matplotlib
                       numpy
                       pandas
+                      seaborn
                       imageio  # GIF rendering
                     ])))
                   ];

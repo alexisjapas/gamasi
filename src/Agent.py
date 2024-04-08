@@ -2,6 +2,7 @@ import threading
 import numpy as np
 from random import randint, choice
 from time import sleep, perf_counter_ns
+import statistics
 
 from .Brain import Abilities
 from .Phenome import Phenome
@@ -24,6 +25,7 @@ class Agent(threading.Thread):  # TODO make this ABC
         debug: bool = False,
     ):
         super().__init__()
+        self.daemon = True
         self.debug = debug
 
         # Agent properties
@@ -99,7 +101,7 @@ class Agent(threading.Thread):  # TODO make this ABC
             action_success = False
             match decision:
                 case Abilities.idle:
-                    self.energy += 10
+                    self.energy += 6
                     action_success = True
                 case Abilities.move_bot:
                     self.energy -= 1
@@ -210,7 +212,7 @@ class Agent(threading.Thread):  # TODO make this ABC
     # DATA
     def get_data(self) -> dict:
         # Attributes and lifespan
-        statistics = {
+        data = {
             "id": self.id,
             "generation": self.generation,
             "parents_count": 1 if self.parents is None else len(self.parents),
@@ -220,36 +222,72 @@ class Agent(threading.Thread):  # TODO make this ABC
             else self.death_date - self.birth_date,
             "children_count": len(self.children),
             "birth_success": self.birth_success,
+            "travelled_distance": len(self.path) - 1,
         }
 
-        # Activity track
-        statistics["travelled_distance"] = len(self.path)
-        statistics["actions_count"] = len(self.actions)
+        # Activity track TODO def func
+        data["actions_count"] = len(self.actions)
+
         decision_durations = [a[1] - a[0] for a in self.actions]
-        statistics["mean_decision_duration"] = (
-            None
-            if len(self.actions) < 1
-            else sum(decision_durations) / len(decision_durations)
+        data["min_decision_duration"] = (
+            None if len(decision_durations) < 1 else min(decision_durations)
         )
-        action_durations = [a[3] - a[1] for a in self.actions]
-        statistics["mean_action_duration"] = (
+        data["max_decision_duration"] = (
+            None if len(decision_durations) < 1 else max(decision_durations)
+        )
+        data["mean_decision_duration"] = (
+            None if len(decision_durations) < 1 else statistics.mean(decision_durations)
+        )
+        data["median_decision_duration"] = (
             None
-            if len(self.actions) < 1
-            else sum(action_durations) / len(action_durations)
+            if len(decision_durations) < 1
+            else statistics.median(decision_durations)
+        )
+        data["std_decision_duration"] = (
+            None
+            if len(decision_durations) < 2
+            else statistics.stdev(decision_durations)
         )
 
-        # Meta-statistics
+        action_durations = [a[3] - a[1] for a in self.actions]
+        data["min_action_duration"] = (
+            None if len(action_durations) < 1 else min(action_durations)
+        )
+        data["max_action_duration"] = (
+            None if len(action_durations) < 1 else max(action_durations)
+        )
+        data["mean_action_duration"] = (
+            None if len(action_durations) < 1 else statistics.mean(action_durations)
+        )
+        data["median_action_duration"] = (
+            None if len(action_durations) < 1 else statistics.median(action_durations)
+        )
+        data["std_action_duration"] = (
+            None if len(action_durations) < 2 else statistics.stdev(action_durations)
+        )
+
+        # Meta-data
         round_timers = [a[0] for a in self.actions]
         round_durations = [
             round_timers[i + 1] - round_timers[i] for i in range(len(round_timers) - 1)
         ]
-        statistics["mean_round_duration"] = (
-            None
-            if len(self.actions) < 2
-            else sum(round_durations) / len(round_durations)
+        data["min_round_duration"] = (
+            None if len(round_durations) < 1 else min(round_durations)
+        )
+        data["max_round_duration"] = (
+            None if len(round_durations) < 1 else max(round_durations)
+        )
+        data["mean_round_duration"] = (
+            None if len(round_durations) < 1 else statistics.mean(round_durations)
+        )
+        data["median_round_duration"] = (
+            None if len(round_durations) < 1 else statistics.median(round_durations)
+        )
+        data["std_round_duration"] = (
+            None if len(round_durations) < 2 else statistics.stdev(round_durations)
         )
 
-        return statistics
+        return data
 
     # VISUALIZATION
     @property
