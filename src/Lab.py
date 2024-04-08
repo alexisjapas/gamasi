@@ -209,7 +209,29 @@ class Lab:
         population_statistics_df = pd.DataFrame(population_statistics)
         population_statistics_df.set_index("data", inplace=True)
 
-        # Timelines TODO
+        # Population count timeline
+        birth_timeline = [a.birth_date for a in simulation["universe"].population.values()]
+        birth_timeline.sort()
+        death_timeline = [a.death_date for a in simulation["universe"].population.values() if a.death_date]
+        death_timeline.sort()
+
+        population_count = 0
+        population_timeline = []
+        while birth_timeline or death_timeline:
+            # Trick to get min between the first element of two lists of different size
+            birth = float("inf") if not birth_timeline else birth_timeline[0]
+            death = float("inf") if not death_timeline else death_timeline[0]
+            if birth < death:
+                t = birth_timeline.pop(0)
+                population_count += 1
+            else:
+                t = death_timeline.pop(0)
+                population_count -= 1
+            population_timeline.append({"t": t, "population_count": population_count})
+        population_timeline_df = pd.DataFrame(population_timeline)
+        population_timeline_df.set_index("t", inplace=True)
+
+        # Actions timelines TODO
         actions_timeline = []
         positions_timeline = []
         for a_id, agent in tqdm(
@@ -223,6 +245,7 @@ class Lab:
         return {
             "agents_statistics": agents_statistics_df,
             "population_statistics": population_statistics_df,
+            "population_timeline": population_timeline_df,
             "actions": actions_timeline,
             "positions": positions_timeline,
         }
