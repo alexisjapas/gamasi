@@ -44,7 +44,7 @@
 
                   enterShell = ''
                     pv=`python --version`
-                    echo "Welcome to sinvoker engine, using $pv"
+                    echo "Welcome to gamasi, using $pv"
                   '';
                 }
               ];
