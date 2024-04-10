@@ -38,6 +38,7 @@
                       numpy
                       pandas
                       seaborn
+                      tifffile
                       imageio  # GIF rendering
                     ])))
                   ];

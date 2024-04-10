@@ -158,6 +158,7 @@ class Lab:
                 agent.start()
 
     def _stop_population(self, universe, verbose: bool) -> None:
+        # For the moment it is unused, but to enable universe to unfreeze, it'll be needed
         with universe.population_lock:  # TODO Add priority to this lock
             for agent in tqdm(
                 universe.population.values(),
@@ -209,7 +210,7 @@ class Lab:
         population_statistics_df = pd.DataFrame(population_statistics)
         population_statistics_df.set_index("data", inplace=True)
 
-        # Population count timeline
+        # Population count timeline TODO its wrong
         birth_timeline = [a.birth_date for a in simulation["universe"].population.values()]
         birth_timeline.sort()
         death_timeline = [a.death_date for a in simulation["universe"].population.values() if a.death_date]
@@ -231,9 +232,11 @@ class Lab:
         population_timeline_df = pd.DataFrame(population_timeline)
         population_timeline_df.set_index("t", inplace=True)
 
+        # Positions timeline
+        positions_timeline = self.get_spatial_frames(simulation)
+
         # Actions timelines TODO
         actions_timeline = []
-        positions_timeline = []
         for a_id, agent in tqdm(
             simulation["universe"].population.items(),
             desc="Gathering timelines\t\t",
@@ -246,9 +249,49 @@ class Lab:
             "agents_statistics": agents_statistics_df,
             "population_statistics": population_statistics_df,
             "population_timeline": population_timeline_df,
-            "actions": actions_timeline,
             "positions": positions_timeline,
+            "actions": actions_timeline,
         }
+
+    def get_spatial_frames(self, simulation):
+        # TODO look for a method to determine optimal linear time step
+        # Probably something like finding the GCD of all time steps
+
+        frames_shape = simulation["universe"].space.shape
+        frames = []
+        timestamps = []
+        next_moves = [a.path[0][0] for a in simulation["universe"].population.values() if a.path]
+        next_timestamp = None if not next_moves else min(next_moves)
+        disabled_agents = [a for a in simulation["universe"].population.values()]
+        enabled_agents = []
+
+        while next_timestamp < float("inf"):
+            # Timestamp
+            timestamps.append(next_timestamp)
+            next_moves = [a.path[1][0] for a in simulation["universe"].population.values() if len(a.path) >= 2]
+            next_timestamp = float("inf") if not next_moves else min(next_moves)
+
+            # Enabling agents
+            for a in disabled_agents:
+                if a.path and a.path[0][0] < next_timestamp:
+                    disabled_agents.remove(a)
+                    enabled_agents.append(a)
+
+            # Updating enabled positions
+            for a in enabled_agents:
+                if not a.path:
+                    enabled_agents.remove(a)
+                elif a.path[0][0] < next_timestamp:
+                    a.position = a.path[0][1]
+                    a.path.pop(0)
+
+            # Create frame with enabled agents
+            frame = np.ones((*frames_shape, 3), dtype=np.uint8)
+            for a in enabled_agents:
+                frame[a.position.y, a.position.x] = a.phenome.color
+            
+            frames.append(frame)
+        return timestamps, frames
 
     # VISUALIZATION
     def plot_generation_stats(self, data):
