@@ -276,6 +276,7 @@ class Lab:
                 if a.path and a.path[0][0] < next_timestamp:
                     disabled_agents.remove(a)
                     enabled_agents.append(a)
+                    a.framescount = 0
 
             # Updating enabled positions
             for a in enabled_agents:
@@ -288,7 +289,9 @@ class Lab:
             # Create frame with enabled agents
             frame = np.ones((*frames_shape, 3), dtype=np.uint8)
             for a in enabled_agents:
-                frame[a.position.y, a.position.x] = a.phenome.color
+                color = (255, 255, 255) if a.framescount == 0 else a.phenome.color
+                frame[a.position.y, a.position.x] = color
+                a.framescount += 1
             
             frames.append(frame)
         return timestamps, frames
