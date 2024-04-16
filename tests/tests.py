@@ -28,7 +28,9 @@ print(len(errors_births_after_end))
 print(errors_birth_dates)
 
 # TODO Find why some agents pop from nowhere
-a = simulation["universe"].population[data["agents_statistics"]["travelled_distance"].idxmin()]
+a = simulation["universe"].population[
+    data["agents_statistics"]["travelled_distance"].idxmin()
+]
 print(a.birth_date)
 print(a.position)
 print(a.framescount)

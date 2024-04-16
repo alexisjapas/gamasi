@@ -8,7 +8,7 @@ class Phenome:
         self,
         reaction_time: float = 1e-4,
         speed: int = 1e5,
-        energy_capacity: int = 1e2,
+        energy_capacity: int = 2e2,
         scope: int = 3,
         color: tuple = None,
         brain: Brain = None,

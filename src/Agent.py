@@ -101,33 +101,45 @@ class Agent(threading.Thread):  # TODO make this ABC
             action_success = False
             match decision:
                 case Abilities.idle:
-                    self.energy += 6
+                    self.energy += 0
                     action_success = True
                 case Abilities.move_bot:
-                    self.energy -= 1
                     if self.move(Position(1, 0)):
                         self.energy -= 2
                         action_success = True
                 case Abilities.move_top:
-                    self.energy -= 1
                     if self.move(Position(-1, 0)):
                         self.energy -= 2
                         action_success = True
                 case Abilities.move_left:
-                    self.energy -= 1
                     if self.move(Position(0, 1)):
                         self.energy -= 2
                         action_success = True
                 case Abilities.move_right:
-                    self.energy -= 1
                     if self.move(Position(0, -1)):
                         self.energy -= 2
                         action_success = True
+                case Abilities.eat_bot:
+                    if self.eat(Position(1, 0)):
+                        self.energy -= 2
+                        action_success = True
+                case Abilities.eat_top:
+                    if self.eat(Position(-1, 0)):
+                        self.energy -= 2
+                        action_success = True
+                case Abilities.eat_left:
+                    if self.eat(Position(0, 1)):
+                        self.energy -= 2
+                        action_success = True
+                case Abilities.eat_right:
+                    if self.eat(Position(0, -1)):
+                        self.energy -= 2
+                        action_success = True
                 case Abilities.reproduce:
-                    self.energy -= 1
                     if self.energy >= self.phenome.energy_capacity // 2:
                         self.energy -= self.energy // 2
                         action_success = self.reproduce()
+
             self.actions.append(
                 (
                     reaction_time,
@@ -164,6 +176,20 @@ class Agent(threading.Thread):  # TODO make this ABC
                 # Update self attributes
                 self.position = new_pos
                 self.path.append((self.universe.get_time(), new_pos))
+
+        return success
+
+    def eat(self, relative_pos: Position) -> bool:
+        success = False
+        eat_pos = self.universe.wrap_position(self.position + relative_pos)
+        with self.universe.space_locks[eat_pos.tuple]:
+            if (  # Do not compare color
+                not self.universe.is_valid(eat_pos)
+                and self.universe[eat_pos].phenome.color != self.phenome.color
+            ):
+                success = True
+                self.energy += self.universe[eat_pos].energy
+                self.universe[eat_pos].energy = 0
 
         return success
 

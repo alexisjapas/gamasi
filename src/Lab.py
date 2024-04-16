@@ -211,9 +211,15 @@ class Lab:
         population_statistics_df.set_index("data", inplace=True)
 
         # Population count timeline TODO its wrong
-        birth_timeline = [a.birth_date for a in simulation["universe"].population.values()]
+        birth_timeline = [
+            a.birth_date for a in simulation["universe"].population.values()
+        ]
         birth_timeline.sort()
-        death_timeline = [a.death_date for a in simulation["universe"].population.values() if a.death_date]
+        death_timeline = [
+            a.death_date
+            for a in simulation["universe"].population.values()
+            if a.death_date
+        ]
         death_timeline.sort()
 
         population_count = 0
@@ -260,7 +266,9 @@ class Lab:
         frames_shape = simulation["universe"].space.shape
         frames = []
         timestamps = []
-        next_moves = [a.path[0][0] for a in simulation["universe"].population.values() if a.path]
+        next_moves = [
+            a.path[0][0] for a in simulation["universe"].population.values() if a.path
+        ]
         next_timestamp = None if not next_moves else min(next_moves)
         disabled_agents = [a for a in simulation["universe"].population.values()]
         enabled_agents = []
@@ -268,7 +276,11 @@ class Lab:
         while next_timestamp < float("inf"):
             # Timestamp
             timestamps.append(next_timestamp)
-            next_moves = [a.path[1][0] for a in simulation["universe"].population.values() if len(a.path) >= 2]
+            next_moves = [
+                a.path[1][0]
+                for a in simulation["universe"].population.values()
+                if len(a.path) >= 2
+            ]
             next_timestamp = float("inf") if not next_moves else min(next_moves)
 
             # Enabling agents
@@ -292,7 +304,7 @@ class Lab:
                 color = (255, 255, 255) if a.framescount == 0 else a.phenome.color
                 frame[a.position.y, a.position.x] = color
                 a.framescount += 1
-            
+
             frames.append(frame)
         return timestamps, frames
 
