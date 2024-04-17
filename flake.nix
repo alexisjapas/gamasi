@@ -39,6 +39,7 @@
                       pandas
                       seaborn
                       tifffile
+                      pyvis
                       imageio  # GIF rendering
                     ])))
                   ];
