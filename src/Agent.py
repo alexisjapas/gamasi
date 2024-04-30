@@ -19,7 +19,7 @@ class Agent(threading.Thread):  # TODO make this ABC
         parents: list,
         energy: int = None,
         phenome: Phenome = None,
-        birth_date: int = None,
+        start_date: int = None,
         start_on_birth: bool = False,
         start_barrier: threading.Barrier = None,
         debug: bool = False,
@@ -43,20 +43,34 @@ class Agent(threading.Thread):  # TODO make this ABC
         self.generation = generation
         self.parents = parents
         # Set once
-        self.birth_date = birth_date if birth_date else self.universe.get_time()
         self.death_date = None
+        self.start_date = start_date
 
         # Evolutives
         self.phenome = self.initial_phenome.copy()
         self.energy = energy if energy else self.phenome.energy_capacity
         self.position = initial_position
-        self.path = []
-        self.actions: list = []
+        self.path = []  # remove and post-compute with actions
+        self.actions: dict = {
+            "id": [],
+            "reaction_time": [],
+            "decision_time": [],
+            "decision": [],
+            "action_time": [],
+            "action_success": [],
+        }
         self.children = []
 
         # Adding to universe
         self.birth_success = True
         with universe.space_locks[initial_position.tuple]:
+            self.spawn_date = self.universe.get_time()
+            self.actions["id"].append(self.id)
+            self.actions["decision"].append("Abilities.spawn")
+            self.actions["action_time"].append(self.spawn_date)
+            self.actions["action_success"].append(True)
+            self.actions["reaction_time"].append(0)
+            self.actions["decision_time"].append(0)
             if self.universe.is_valid(initial_position):
                 self.universe[initial_position] = self
                 if start_on_birth:  # Autostart
@@ -74,12 +88,18 @@ class Agent(threading.Thread):  # TODO make this ABC
     def run(self):
         if self.start_barrier:
             self.start_barrier.wait()
-            self.birth_date = self.universe.get_time()
+        self.start_date = self.universe.get_time()
+        self.actions["id"].append(self.id)
+        self.actions["decision"].append("Abilities.start")
+        self.actions["action_time"].append(self.start_date)
+        self.actions["action_success"].append(True)
+        self.actions["reaction_time"].append(0)
+        self.actions["decision_time"].append(0)
 
         if self.debug:
             print(f"Agent {self.id} start running")
 
-        self.path.append((self.birth_date, self.position))
+        self.path.append((self.start_date, self.position))
 
         # Lifetime
         while not self.stop.is_set() and not self.universe.freeze.is_set():
@@ -101,7 +121,7 @@ class Agent(threading.Thread):  # TODO make this ABC
             action_success = False
             match decision:
                 case Abilities.idle:
-                    self.energy += 0
+                    self.energy += 6
                     action_success = True
                 case Abilities.move_bot:
                     if self.move(Position(1, 0)):
@@ -140,15 +160,12 @@ class Agent(threading.Thread):  # TODO make this ABC
                         self.energy -= self.energy // 2
                         action_success = self.reproduce()
 
-            self.actions.append(
-                (
-                    reaction_time,
-                    decision_time,
-                    decision,
-                    self.universe.get_time(),
-                    action_success,
-                )
-            )
+            self.actions["id"].append(self.id)
+            self.actions["reaction_time"].append(reaction_time)
+            self.actions["decision_time"].append(decision_time)
+            self.actions["decision"].append(decision)
+            self.actions["action_time"].append(self.universe.get_time())
+            self.actions["action_success"].append(action_success)
 
             # Energy boundings
             if self.energy < 1:
@@ -184,7 +201,7 @@ class Agent(threading.Thread):  # TODO make this ABC
         eat_pos = self.universe.wrap_position(self.position + relative_pos)
         with self.universe.space_locks[eat_pos.tuple]:
             if (  # Do not compare color
-                not self.universe.is_valid(eat_pos)
+                isinstance(self.universe[eat_pos], Agent)
                 and self.universe[eat_pos].phenome.color != self.phenome.color
             ):
                 success = True
@@ -225,8 +242,14 @@ class Agent(threading.Thread):  # TODO make this ABC
         return birth_success
 
     def die(self):
-        self.death_date = self.universe.get_time()
         self.stop.set()
+        self.death_date = self.universe.get_time()
+        self.actions["id"].append(self.id)
+        self.actions["decision"].append("Abilities.die")
+        self.actions["action_time"].append(self.death_date)
+        self.actions["action_success"].append(True)
+        self.actions["reaction_time"].append(0)
+        self.actions["decision_time"].append(0)
         if self.debug:
             print(f"Agent {self.id} died")
 
@@ -243,18 +266,23 @@ class Agent(threading.Thread):  # TODO make this ABC
             "generation": self.generation,
             "parents_count": 1 if self.parents is None else len(self.parents),
             "dead": False if self.death_date is None else True,
-            "lifespan": self.universe.culmination - self.birth_date
+            "lifespan": self.universe.culmination - self.spawn_date
             if self.death_date is None
-            else self.death_date - self.birth_date,
+            else self.death_date - self.spawn_date,
             "children_count": len(self.children),
             "birth_success": self.birth_success,
-            "travelled_distance": len(self.path) - 1,
+            "travelled_distance": max(len(self.path) - 1, 0),
         }
 
         # Activity track TODO def func
         data["actions_count"] = len(self.actions)
 
-        decision_durations = [a[1] - a[0] for a in self.actions]
+        decision_durations = [
+            b - a
+            for b, a in zip(
+                self.actions["decision_time"], self.actions["reaction_time"]
+            )
+        ]
         data["min_decision_duration"] = (
             None if len(decision_durations) < 1 else min(decision_durations)
         )
@@ -275,7 +303,10 @@ class Agent(threading.Thread):  # TODO make this ABC
             else statistics.stdev(decision_durations)
         )
 
-        action_durations = [a[3] - a[1] for a in self.actions]
+        action_durations = [
+            b - a
+            for b, a in zip(self.actions["action_time"], self.actions["decision_time"])
+        ]
         data["min_action_duration"] = (
             None if len(action_durations) < 1 else min(action_durations)
         )
@@ -293,7 +324,7 @@ class Agent(threading.Thread):  # TODO make this ABC
         )
 
         # Meta-data
-        round_timers = [a[0] for a in self.actions]
+        round_timers = [a for a in self.actions["action_time"]]
         round_durations = [
             round_timers[i + 1] - round_timers[i] for i in range(len(round_timers) - 1)
         ]
@@ -330,8 +361,23 @@ class Agent(threading.Thread):  # TODO make this ABC
     def __str__(self):
         ID = f"ID: {self.id:-3d}"
         GEN = f"GEN: {self.generation:-3d}"
-        BIRTH = f"BIRTH: {int(self.birth_date/1e6):-6d} ms"
+        start = -1 if self.start_date is None else self.start_date
+        BIRTH = f"BIRTH: {int(start/1e6):-6d} ms"
         death = -1 if self.death_date is None else self.death_date
         DEATH = f"DEATH: {int(death/1e6):-6d} ms"
         POS = f"POS: {self.position}"
         return f"{ID} | {GEN} | {BIRTH} | {DEATH} | {POS}"
+
+    # SAVE TODO refactor
+    def to_dict(self):
+        data = {
+            "id": self.id,
+            "generation": self.generation,
+            "parents": self.parents,
+            "start_date": self.start_date,
+            "death_date": self.death_date,
+            "children": self.children,
+            "birth_success": self.birth_success
+        }
+        data.update(self.phenome.to_dict())
+        return data

@@ -35,3 +35,12 @@ class Phenome:
     def mutate(self):
         # TODO
         pass
+
+    def to_dict(self):  # TODO refactor
+        return {
+            "reaction_time": self.reaction_time,
+            "speed": self.speed,
+            "energy_capacity": self.energy_capacity,
+            "scope": self.scope,
+            "color": self.color,
+        }

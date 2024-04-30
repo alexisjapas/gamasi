@@ -11,7 +11,7 @@ class Universe:
     This class control and lock time, space and population
     """
 
-    def __init__(self, height: int, width: int):
+    def __init__(self, height: int, width: int):  # TODO add a 3rd dimension
         self.freeze: threading.Event = threading.Event()
 
         # Time
@@ -44,7 +44,9 @@ class Universe:
         self, pos: Position
     ):  # TODO rename or refactor (stop returning bool or pos)
         pos = self.wrap_position(pos)
-        return pos if self.space[pos.tuple] is None else False
+        return (
+            pos if not self.freeze.is_set() and self.space[pos.tuple] is None else False
+        )
 
     def get_area(self, pos: Position, scope: int) -> np.array:
         # Returns an area of the space given a position and a scope.

@@ -1,5 +1,8 @@
+# Godot 4+ specific ignores
+*.godot/
+
 # Results
-results/stacks
+results
 *.csv
 
 # flakes

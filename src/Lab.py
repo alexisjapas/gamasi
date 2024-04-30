@@ -211,10 +211,10 @@ class Lab:
         population_statistics_df.set_index("data", inplace=True)
 
         # Population count timeline TODO its wrong
-        birth_timeline = [
-            a.birth_date for a in simulation["universe"].population.values()
+        spawn_timeline = [
+            a.spawn_date for a in simulation["universe"].population.values()
         ]
-        birth_timeline.sort()
+        spawn_timeline.sort()
         death_timeline = [
             a.death_date
             for a in simulation["universe"].population.values()
@@ -224,12 +224,12 @@ class Lab:
 
         population_count = 0
         population_timeline = []
-        while birth_timeline or death_timeline:
+        while spawn_timeline or death_timeline:
             # Trick to get min between the first element of two lists of different size
-            birth = float("inf") if not birth_timeline else birth_timeline[0]
+            birth = float("inf") if not spawn_timeline else spawn_timeline[0]
             death = float("inf") if not death_timeline else death_timeline[0]
             if birth < death:
-                t = birth_timeline.pop(0)
+                t = spawn_timeline.pop(0)
                 population_count += 1
             else:
                 t = death_timeline.pop(0)
@@ -238,25 +238,11 @@ class Lab:
         population_timeline_df = pd.DataFrame(population_timeline)
         population_timeline_df.set_index("t", inplace=True)
 
-        # Positions timeline
-        positions_timeline = self.get_spatial_frames(simulation)
-
-        # Actions timelines TODO
-        actions_timeline = []
-        for a_id, agent in tqdm(
-            simulation["universe"].population.items(),
-            desc="Gathering timelines\t\t",
-            disable=not verbose,
-            colour="red",
-        ):
-            pass
-
         return {
             "agents_statistics": agents_statistics_df,
             "population_statistics": population_statistics_df,
             "population_timeline": population_timeline_df,
-            "positions": positions_timeline,
-            "actions": actions_timeline,
+            "positions": self.get_spatial_frames(simulation),
         }
 
     def get_spatial_frames(self, simulation):
@@ -265,6 +251,7 @@ class Lab:
 
         frames_shape = simulation["universe"].space.shape
         frames = []
+        compressed_pos = []
         timestamps = []
         next_moves = [
             a.path[0][0] for a in simulation["universe"].population.values() if a.path
@@ -274,6 +261,7 @@ class Lab:
         enabled_agents = []
 
         while next_timestamp < float("inf"):
+            # TODO TIMESTAMPS NON UNIQUES
             # Timestamp
             timestamps.append(next_timestamp)
             next_moves = [
@@ -292,21 +280,36 @@ class Lab:
 
             # Updating enabled positions
             for a in enabled_agents:
-                if not a.path:
+                # TODO Dead ones can disapear before their last move
+                if a.death_date and a.death_date < next_timestamp:
                     enabled_agents.remove(a)
-                elif a.path[0][0] < next_timestamp:
+                elif a.path and a.path[0][0] < next_timestamp:
                     a.position = a.path[0][1]
                     a.path.pop(0)
 
             # Create frame with enabled agents
             frame = np.ones((*frames_shape, 3), dtype=np.uint8)
+            frame_positions = {}
             for a in enabled_agents:
                 color = (255, 255, 255) if a.framescount == 0 else a.phenome.color
                 frame[a.position.y, a.position.x] = color
                 a.framescount += 1
+                frame_positions[a.id] = (a.position.y, a.position.x)
+            compressed_pos.append(frame_positions)
 
             frames.append(frame)
-        return timestamps, frames
+
+        # Create a single struct with compressed positions and timestamps
+        return timestamps, frames, compressed_pos
+
+    def get_timeline(self, simulation):
+        timelines = [a.actions for a in simulation["universe"].population.values()]
+        timeline = pd.concat([pd.DataFrame(d) for d in timelines], ignore_index=True)
+        timeline.set_index('id', inplace=True)
+        return timeline
+
+    def get_agents_data(self, simulation):
+        return pd.DataFrame([a.to_dict() for a in simulation["universe"].population.values()])
 
     # VISUALIZATION
     def plot_generation_stats(self, data):
