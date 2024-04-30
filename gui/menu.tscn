@@ -1,0 +1,111 @@
+[gd_scene load_steps=2 format=3 uid="uid://bgp5qc8ejutey"]
+
+[ext_resource type="Script" path="res://menu.gd" id="1_n05mf"]
+
+[node name="Menu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_n05mf")
+
+[node name="CsvFileDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Open a Directory"
+position = Vector2i(0, 36)
+size = Vector2i(517, 159)
+ok_button_text = "Select Current Folder"
+file_mode = 2
+access = 2
+
+[node name="PickCsvButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.011
+anchor_right = 0.509
+anchor_bottom = 0.106
+offset_left = 895.96
+offset_top = 11.872
+offset_right = 513.632
+offset_bottom = 12.312
+grow_horizontal = 2
+grow_vertical = 2
+text = "Pick data"
+
+[node name="Timeline" type="HSlider" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+max_value = 0.0
+
+[node name="CurrentAction" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = 238.0
+offset_right = 494.0
+offset_bottom = 285.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Timestamps" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 347.0
+offset_top = 469.0
+offset_right = 1076.0
+offset_bottom = 525.0
+
+[node name="ActionsHeader" type="ItemList" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.00954861
+anchor_top = 0.0154321
+anchor_right = 0.25434
+anchor_bottom = 0.151235
+grow_horizontal = 2
+grow_vertical = 2
+same_column_width = true
+metadata/_edit_use_anchors_ = true
+
+[node name="ActionsItems" type="ItemList" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.00954861
+anchor_top = 0.166667
+anchor_right = 0.252604
+anchor_bottom = 0.955247
+grow_vertical = 2
+same_column_width = true
+metadata/_edit_use_anchors_ = true
+
+[node name="Positions" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.646
+anchor_bottom = 0.5
+offset_left = 413.0
+offset_top = 166.0
+offset_right = 146.808
+offset_bottom = -6.0
+
+[connection signal="dir_selected" from="CsvFileDialog" to="." method="_on_csv_file_dialog_dir_selected"]
+[connection signal="pressed" from="PickCsvButton" to="." method="_on_pick_csv_button_pressed"]
+[connection signal="value_changed" from="Timeline" to="." method="_on_timeline_value_changed"]

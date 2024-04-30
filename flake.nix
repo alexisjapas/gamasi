@@ -41,6 +41,7 @@
                       tifffile
                       pyvis
                       imageio  # GIF rendering
+                      godot_4
                     ])))
                   ];
 
