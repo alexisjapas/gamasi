@@ -143,7 +143,7 @@ class Lab:
                 universe=universe,
                 initial_position=pos,
                 generation=0,
-                parents=None,
+                parents=["universe"],
                 start_barrier=start_barrier,
             )
 
@@ -169,7 +169,7 @@ class Lab:
                 agent.stop.set()
 
     # ANALYSIS
-    def gather_data(self, simulation: dict, verbose: bool = True) -> dict:
+    def get_statistics(self, simulation: dict, verbose: bool = True) -> dict:
         # TODO copy the universe to not alter it
         # Individuals statistics
         agents_statistics = []
@@ -210,6 +210,12 @@ class Lab:
         population_statistics_df = pd.DataFrame(population_statistics)
         population_statistics_df.set_index("data", inplace=True)
 
+        return {
+            "agents_statistics": agents_statistics_df,
+            "population_statistics": population_statistics_df,
+        }
+
+    def get_temporal_data(self, simulation):
         # Population count timeline TODO its wrong
         spawn_timeline = [
             a.spawn_date for a in simulation["universe"].population.values()
@@ -238,14 +244,9 @@ class Lab:
         population_timeline_df = pd.DataFrame(population_timeline)
         population_timeline_df.set_index("t", inplace=True)
 
-        return {
-            "agents_statistics": agents_statistics_df,
-            "population_statistics": population_statistics_df,
-            "population_timeline": population_timeline_df,
-            "positions": self.get_spatial_frames(simulation),
-        }
+        return population_timeline_df
 
-    def get_spatial_frames(self, simulation):
+    def get_spatial_data(self, simulation):
         # TODO look for a method to determine optimal linear time step
         # Probably something like finding the GCD of all time steps
 
@@ -303,13 +304,19 @@ class Lab:
         return timestamps, frames, compressed_pos
 
     def get_timeline(self, simulation):
-        timelines = [a.actions for a in simulation["universe"].population.values()]
-        timeline = pd.concat([pd.DataFrame(d) for d in timelines], ignore_index=True)
-        timeline.set_index('id', inplace=True)
-        return timeline
+        timeline = []
+        for a in simulation["universe"].population.values():
+            timeline += a.actions
+
+        sorted_timeline = sorted(timeline, key=lambda x: x["action_time"])
+
+        return sorted_timeline
 
     def get_agents_data(self, simulation):
-        return pd.DataFrame([a.to_dict() for a in simulation["universe"].population.values()])
+        agents_data = {}
+        for a in simulation["universe"].population.values():
+            agents_data[a.id] = a.to_dict()
+        return agents_data
 
     # VISUALIZATION
     def plot_generation_stats(self, data):
