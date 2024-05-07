@@ -1,7 +1,8 @@
 extends Control
 
 var header
-var timeline_actions = {}
+var timeline
+var agents
 var timestamps
 var positions
 
@@ -11,34 +12,21 @@ func _on_pick_csv_button_pressed():
 
 
 func _on_csv_file_dialog_dir_selected(dir):
-	read_csv(dir.path_join("timeline.csv"))
+	read_timeline(dir.path_join("timeline.json"))
 	read_timestamp(dir.path_join("timestamps.json"))
 	read_positions(dir.path_join("positions.json"))
+	load_agents_data(dir.path_join("agents_data.json"))
 
 
-func read_csv(path):
-	var file = FileAccess.open(path, FileAccess.READ)
-	
-	# Header
-	header = file.get_csv_line()
-	for c in header:
-		timeline_actions[c] = []
-	%ActionsHeader.clear()
-	%ActionsHeader.max_columns = header.size()
-	%ActionsItems.clear()
-	%ActionsItems.max_columns = header.size()
-	
-	# Data
-	while file.get_position() < file.get_length():
-		var line = file.get_csv_line()
-		for c in line.size():
-			timeline_actions[header[c]].append(line[c])
-	
-	for h in header:
-		%ActionsHeader.add_item(h)
-	for i in range(timeline_actions[header[0]].size()):
-		for h in header:
-			%ActionsItems.add_item(timeline_actions[h][i])
+func read_timeline(path):
+	var temp = FileAccess.get_file_as_string(path)
+	timeline = JSON.parse_string(temp)
+	%CurrentActions.columns = timeline[0].size()
+
+func load_agents_data(path):
+	var temp = FileAccess.get_file_as_string(path)
+	agents = JSON.parse_string(temp)
+	print(agents[str(0)])
 
 func read_timestamp(path):
 	var temp = FileAccess.get_file_as_string(path)
@@ -53,14 +41,46 @@ func read_positions(path):
 	print(positions[0])
 
 func _on_timeline_value_changed(value):
-	#var text = ""
-	#for h in header:
-		#text += " " + timeline_actions[h][value]
-	#%CurrentAction.text = text
-	print(value)
-
+	# Actions & timestamps
+	var actions = %CurrentActions.get_children()
+	if actions:
+		for n in actions:
+			%CurrentActions.remove_child(n)
+			n.queue_free()
 	if value == timestamps.size() - 1:
 		%Timestamps.text = str(timestamps[value]) + " - END"
 	else:
 		%Timestamps.text = str(timestamps[value]) + " - " + str(timestamps[value+1])
-	%Positions.text = str(positions[value])
+		for action in timeline:
+			if timestamps[value] <= action["decision_time"] and action["decision_time"] < timestamps[value+1]:
+				for k in action:
+					var action_attribute = Label.new()
+					action_attribute.text = str(action[k])
+					var color = agents[str(action["id"])]["color"]
+					action_attribute.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
+					%CurrentActions.add_child(action_attribute)
+	
+	# Map
+	var population = %Map/Population.get_children()
+	if population:
+		for n in population:
+			%Map/Population.remove_child(n)
+			n.queue_free()
+	
+	for id in positions[value]:
+		draw_agent(positions[value][id], agents[id]["color"])
+
+func draw_agent(pos, color):
+	const AGENT = preload("res://agent.tscn")
+	var new_agent = AGENT.instantiate()
+	new_agent.position = Vector2(pos[1], pos[0]) * 16
+	new_agent.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
+	%Map/Population.add_child(new_agent)
+	
+
+
+
+
+
+
+

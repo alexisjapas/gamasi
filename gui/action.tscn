@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://cgfoa0ikppnth"]
+
+[node name="Action" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+offset_right = 95.0
+offset_bottom = 36.0
+
+[node name="GridContainer" type="GridContainer" parent="PanelContainer"]
+layout_mode = 2
+columns = 3
+
+[node name="DecisionTime" type="Label" parent="PanelContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "fff"
+
+[node name="Action" type="Label" parent="PanelContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "feesa"
+
+[node name="Success" type="Label" parent="PanelContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+text = "vds"

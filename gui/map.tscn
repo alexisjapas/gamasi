@@ -1,7 +1,11 @@
 [gd_scene format=3 uid="uid://bb8gk3kvnh7dj"]
 
-[node name="Map" type="Control"]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="Map" type="Node2D"]
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 800.0
+offset_bottom = 480.0
+size_flags_horizontal = 4
+
+[node name="Population" type="Node2D" parent="."]
+unique_name_in_owner = true
