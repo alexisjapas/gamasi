@@ -50,12 +50,13 @@ func _on_timeline_value_changed(value):
 	if value == timestamps.size() - 1:
 		%Timestamps.text = str(timestamps[value]) + " - END"
 	else:
-		%Timestamps.text = str(timestamps[value]) + " - " + str(timestamps[value+1])
+		%Timestamps.text = str(timestamps[value]) + " <= time < " + str(timestamps[value+1])
 		for action in timeline:
 			if timestamps[value] <= action["action_time"] and action["action_time"] < timestamps[value+1]:
 				for k in action:
 					var action_attribute = Label.new()
 					action_attribute.text = str(action[k])
+					action_attribute.add_theme_font_size_override("font_size", 22)
 					var color = agents[str(action["id"])]["color"]
 					action_attribute.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
 					%CurrentActions.add_child(action_attribute)
@@ -73,7 +74,7 @@ func _on_timeline_value_changed(value):
 		
 		const AGENT = preload("res://agent.tscn")
 		var new_agent = AGENT.instantiate()
-		new_agent.position = Vector2(pos[1], pos[0]) * 32
+		new_agent.position = Vector2(pos[1], pos[0]) * 80
 		new_agent.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
 		new_agent.get_child(-1).text = id
 		%Map/Population.add_child(new_agent)

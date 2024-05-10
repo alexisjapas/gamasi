@@ -6,8 +6,8 @@
 position = Vector2(120, 110)
 
 [node name="ColorRect" type="ColorRect" parent="."]
-offset_right = 32.0
-offset_bottom = 32.0
+offset_right = 80.0
+offset_bottom = 80.0
 
 [node name="Rabbit" type="Sprite2D" parent="."]
 visible = false
@@ -15,11 +15,11 @@ position = Vector2(8, 8)
 texture = ExtResource("1_6r4ll")
 
 [node name="LabelID" type="Label" parent="."]
-offset_right = 32.0
-offset_bottom = 32.0
+offset_right = 80.0
+offset_bottom = 80.0
 size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 10
-text = "12"
+theme_override_font_sizes/font_size = 24
+text = "12000"
 horizontal_alignment = 1
 vertical_alignment = 1
