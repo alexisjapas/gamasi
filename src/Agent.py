@@ -61,16 +61,17 @@ class Agent(threading.Thread):  # TODO make this ABC
             self.actions.append(
                 {
                     "id": self.id,
-                    "decision": "Abilities.spawn",
+                    "decision": "spawn",
                     "action_time": self.spawn_date,
                     "action_success": True,
-                    "reaction_time": 0,
-                    "decision_time": 0,
+                    # "reaction_time": 0,
+                    # "decision_time": 0,
                 }
             )
 
             if self.universe.is_valid(initial_position):
                 self.universe[initial_position] = self
+                self.path.append((self.spawn_date, self.position))
                 if start_on_birth:  # Autostart
                     self.start()
             else:
@@ -88,18 +89,16 @@ class Agent(threading.Thread):  # TODO make this ABC
         self.actions.append(
             {
                 "id": self.id,
-                "decision": "Abilities.start",
+                "decision": "start",
                 "action_time": self.start_date,
                 "action_success": True,
-                "reaction_time": 0,
-                "decision_time": 0,
+                # "reaction_time": 0,
+                # "decision_time": 0,
             }
         )
 
         if self.debug:
             print(f"Agent {self.id} start running")
-
-        self.path.append((self.start_date, self.position))
 
         # Lifetime
         while not self.stop.is_set() and not self.universe.freeze.is_set():
@@ -121,52 +120,33 @@ class Agent(threading.Thread):  # TODO make this ABC
             action_success = False
             match decision:
                 case Abilities.idle:
-                    self.energy += 6
-                    action_success = True
+                    action_success, action_time = self.idle()
                 case Abilities.move_bot:
-                    if self.move(Position(1, 0)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.move(Position(1, 0))
                 case Abilities.move_top:
-                    if self.move(Position(-1, 0)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.move(Position(-1, 0))
                 case Abilities.move_left:
-                    if self.move(Position(0, 1)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.move(Position(0, -1))
                 case Abilities.move_right:
-                    if self.move(Position(0, -1)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.move(Position(0, 1))
                 case Abilities.eat_bot:
-                    if self.eat(Position(1, 0)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.eat(Position(1, 0))
                 case Abilities.eat_top:
-                    if self.eat(Position(-1, 0)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.eat(Position(-1, 0))
                 case Abilities.eat_left:
-                    if self.eat(Position(0, 1)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.eat(Position(0, -1))
                 case Abilities.eat_right:
-                    if self.eat(Position(0, -1)):
-                        self.energy -= 2
-                        action_success = True
+                    action_success, action_time = self.eat(Position(0, 1))
                 case Abilities.reproduce:
-                    if self.energy >= self.phenome.energy_capacity // 2:
-                        self.energy -= self.energy // 2
-                        action_success = self.reproduce()
+                    action_success, action_time = self.reproduce()
 
             self.actions.append(
                 {
                     "id": self.id,
-                    "reaction_time": reaction_time,
-                    "decision_time": decision_time,
+                    # "reaction_time": reaction_time,
+                    # "decision_time": decision_time,
                     "decision": decision.value,
-                    "action_time": self.universe.get_time(),
+                    "action_time": action_time,
                     "action_success": action_success,
                 }
             )
@@ -180,13 +160,19 @@ class Agent(threading.Thread):  # TODO make this ABC
         self.stop.set()
 
     # SIMULATION
+    def idle(self) -> tuple[bool, int]:
+        self.energy += 1
+        return True, self.universe.get_time()
+
     def move(self, relative_pos: Position) -> bool:
         # TODO Add acceleration/velocity, manage it with universe time
         # for example
         # TODO Add inertia
+        self.energy -= 2
         success = False
         new_pos = self.universe.wrap_position(self.position + relative_pos)
         with self.universe.space_locks[new_pos.tuple]:
+            move_time = self.universe.get_time()
             if self.universe.is_valid(new_pos):
                 success = True
 
@@ -196,14 +182,15 @@ class Agent(threading.Thread):  # TODO make this ABC
 
                 # Update self attributes
                 self.position = new_pos
-                self.path.append((self.universe.get_time(), new_pos))
+                self.path.append((move_time, new_pos))
 
-        return success
+        return success, move_time
 
     def eat(self, relative_pos: Position) -> bool:
         success = False
         eat_pos = self.universe.wrap_position(self.position + relative_pos)
         with self.universe.space_locks[eat_pos.tuple]:
+            eat_time = self.universe.get_time()
             if (  # Do not compare color
                 isinstance(self.universe[eat_pos], Agent)
                 and self.universe[eat_pos].phenome.color != self.phenome.color
@@ -212,13 +199,15 @@ class Agent(threading.Thread):  # TODO make this ABC
                 self.energy += self.universe[eat_pos].energy
                 self.universe[eat_pos].energy = 0
 
-        return success
+        return success, eat_time
 
     def reproduce(self) -> None:  # TODO Multi-agents reproduction
         birth_success = False
+        self.energy -= self.energy // 2
 
         # Check possible positions
         # TODO use universe get_area
+        reproduction_time = self.universe.get_time()
 
         possible_positions = []
         for y in range(-1, 2):
@@ -243,19 +232,20 @@ class Agent(threading.Thread):  # TODO make this ABC
                 self.children.append(child)
                 birth_success = child.birth_success
 
-        return birth_success
+        return birth_success, reproduction_time
 
     def die(self):
         self.stop.set()
         self.death_date = self.universe.get_time()
+        self.universe[self.position] = None  # Remove itself from universe
         self.actions.append(
             {
                 "id": self.id,
-                "decision": "Abilities.die",
+                "decision": "die",
                 "action_time": self.death_date,
                 "action_success": True,
-                "reaction_time": 0,
-                "decision_time": 0,
+                # "reaction_time": 0,
+                # "decision_time": 0,
             }
         )
 
