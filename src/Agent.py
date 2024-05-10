@@ -103,7 +103,7 @@ class Agent(threading.Thread):  # TODO make this ABC
         # Lifetime
         while not self.stop.is_set() and not self.universe.freeze.is_set():
             # Minimal energy loss
-            self.energy -= 1
+            self.energy -= 3
 
             # Reaction time set up to set agents speed dependent of their phenome instead of
             # the CPU core its thread is running on

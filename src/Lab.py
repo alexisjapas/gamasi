@@ -250,8 +250,6 @@ class Lab:
         # TODO look for a method to determine optimal linear time step
         # Probably something like finding the GCD of all time steps
 
-        frames_shape = simulation["universe"].space.shape
-        frames = []
         compressed_pos = []
         timestamps = []
         next_moves = [
@@ -262,7 +260,6 @@ class Lab:
         enabled_agents = []
 
         while next_timestamp < float("inf"):
-            # TODO TIMESTAMPS NON UNIQUES
             # Timestamp
             timestamps.append(next_timestamp)
             next_moves = [
@@ -273,35 +270,32 @@ class Lab:
             next_timestamp = float("inf") if not next_moves else min(next_moves)
 
             # Enabling agents
+            next_disabled_agents = [a for a in disabled_agents]
             for a in disabled_agents:
                 if a.path and a.path[0][0] < next_timestamp:
-                    disabled_agents.remove(a)
                     enabled_agents.append(a)
-                    a.framescount = 0
+                    next_disabled_agents.remove(a)
+            disabled_agents = next_disabled_agents
 
             # Updating enabled positions
+            next_enabled_agents = [a for a in enabled_agents]
             for a in enabled_agents:
                 # TODO Dead ones can disapear before their last move
                 if a.death_date and a.death_date < next_timestamp:
-                    enabled_agents.remove(a)
+                    next_enabled_agents.remove(a)
                 elif a.path and a.path[0][0] < next_timestamp:
                     a.position = a.path[0][1]
                     a.path.pop(0)
+            enabled_agents = next_enabled_agents
 
             # Create frame with enabled agents
-            frame = np.ones((*frames_shape, 3), dtype=np.uint8)
             frame_positions = {}
             for a in enabled_agents:
-                color = (255, 255, 255) if a.framescount == 0 else a.phenome.color
-                frame[a.position.y, a.position.x] = color
-                a.framescount += 1
                 frame_positions[a.id] = (a.position.y, a.position.x)
             compressed_pos.append(frame_positions)
 
-            frames.append(frame)
-
         # Create a single struct with compressed positions and timestamps
-        return timestamps, frames, compressed_pos
+        return timestamps, compressed_pos
 
     def get_timeline(self, simulation):
         timeline = []
