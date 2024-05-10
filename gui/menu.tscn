@@ -24,73 +24,49 @@ root_subfolder = "../results"
 
 [node name="PickCsvButton" type="Button" parent="."]
 layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.02
-anchor_top = 0.011
-anchor_right = 0.509
-anchor_bottom = 0.106
-offset_left = -16.4
-offset_top = 10.12
-offset_right = -398.728
-offset_bottom = 10.56
-grow_horizontal = 2
-grow_vertical = 2
+offset_right = 79.0
+offset_bottom = 31.0
 text = "Pick data"
 
 [node name="Timeline" type="HSlider" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -16.0
-grow_horizontal = 2
-grow_vertical = 0
-max_value = 0.0
-
-[node name="CurrentAction" type="Label" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = 118.0
-offset_top = 199.0
-offset_right = 918.0
-offset_bottom = 258.0
+offset_top = 984.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
-vertical_alignment = 1
+max_value = 0.0
 
 [node name="Timestamps" type="Label" parent="."]
 unique_name_in_owner = true
-layout_mode = 0
-offset_left = 42.0
-offset_top = 142.0
-offset_right = 598.0
-offset_bottom = 198.0
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Map" parent="." instance=ExtResource("2_mdpuf")]
 unique_name_in_owner = true
-position = Vector2(1098, 62)
+layout_mode = 1
+anchor_right = 1.5
+anchor_bottom = 0.98
+offset_top = 180.0
+offset_right = -400.0
+offset_bottom = 0.0
+grow_vertical = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.093
-anchor_top = 0.332
-anchor_right = 0.093
-anchor_bottom = 0.332
-offset_left = -137.56
-offset_top = -127.56
-offset_right = 419.44
-offset_bottom = 638.44
+anchor_right = 1.5
+anchor_bottom = 0.98
+offset_left = 800.0
+offset_top = 180.0
+offset_right = -0.00012207
 
 [node name="CurrentActions" type="GridContainer" parent="ScrollContainer"]
 unique_name_in_owner = true

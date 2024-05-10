@@ -52,7 +52,7 @@ func _on_timeline_value_changed(value):
 	else:
 		%Timestamps.text = str(timestamps[value]) + " - " + str(timestamps[value+1])
 		for action in timeline:
-			if timestamps[value] <= action["decision_time"] and action["decision_time"] < timestamps[value+1]:
+			if timestamps[value] <= action["action_time"] and action["action_time"] < timestamps[value+1]:
 				for k in action:
 					var action_attribute = Label.new()
 					action_attribute.text = str(action[k])
@@ -68,15 +68,15 @@ func _on_timeline_value_changed(value):
 			n.queue_free()
 	
 	for id in positions[value]:
-		draw_agent(positions[value][id], agents[id]["color"])
-
-func draw_agent(pos, color):
-	const AGENT = preload("res://agent.tscn")
-	var new_agent = AGENT.instantiate()
-	new_agent.position = Vector2(pos[1], pos[0]) * 16
-	new_agent.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
-	%Map/Population.add_child(new_agent)
-	
+		var pos = positions[value][id]
+		var color = agents[id]["color"]
+		
+		const AGENT = preload("res://agent.tscn")
+		var new_agent = AGENT.instantiate()
+		new_agent.position = Vector2(pos[1], pos[0]) * 32
+		new_agent.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
+		new_agent.get_child(-1).text = id
+		%Map/Population.add_child(new_agent)
 
 
 
