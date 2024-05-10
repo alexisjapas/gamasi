@@ -43,6 +43,7 @@
                       imageio  # GIF rendering
                       godot_4
                     ])))
+                    libsForQt5.qt5.qtwayland
                   ];
 
                   enterShell = ''
