@@ -21,24 +21,20 @@ func _on_csv_file_dialog_dir_selected(dir):
 func read_timeline(path):
 	var temp = FileAccess.get_file_as_string(path)
 	timeline = JSON.parse_string(temp)
-	%CurrentActions.columns = timeline[0].size()
+	%Timeline.max_value = timeline.size() - 1
+	%CurrentActions.columns = timeline[0][0].size()
 
 func load_agents_data(path):
 	var temp = FileAccess.get_file_as_string(path)
 	agents = JSON.parse_string(temp)
-	print(agents[str(0)])
 
 func read_timestamp(path):
 	var temp = FileAccess.get_file_as_string(path)
 	timestamps = JSON.parse_string(temp)
-	%Timeline.max_value = timestamps.size() - 1
-	%Timestamps.text = str(timestamps[0]) + " - " + str(timestamps[1])
-
 
 func read_positions(path):
 	var temp = FileAccess.get_file_as_string(path)
 	positions = JSON.parse_string(temp)
-	print(positions[0])
 
 func _on_timeline_value_changed(value):
 	# Actions & timestamps
@@ -47,19 +43,16 @@ func _on_timeline_value_changed(value):
 		for n in actions:
 			%CurrentActions.remove_child(n)
 			n.queue_free()
-	if value == timestamps.size() - 1:
-		%Timestamps.text = str(timestamps[value]) + " - END"
-	else:
-		%Timestamps.text = str(timestamps[value]) + " <= time < " + str(timestamps[value+1])
-		for action in timeline:
-			if timestamps[value] <= action["action_time"] and action["action_time"] < timestamps[value+1]:
-				for k in action:
-					var action_attribute = Label.new()
-					action_attribute.text = str(action[k])
-					action_attribute.add_theme_font_size_override("font_size", 22)
-					var color = agents[str(action["id"])]["color"]
-					action_attribute.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
-					%CurrentActions.add_child(action_attribute)
+
+	%Timestamps.text = str(timestamps[value]) + " <= time < " + str(timestamps[value+1])
+	for action in timeline[value]:
+		for k_attr in action:
+			var action_attribute = Label.new()
+			action_attribute.text = str(action[k_attr])
+			action_attribute.add_theme_font_size_override("font_size", 22)
+			var color = agents[str(action["id"])]["color"]
+			action_attribute.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
+			%CurrentActions.add_child(action_attribute)
 	
 	# Map
 	var population = %Map/Population.get_children()
@@ -74,7 +67,7 @@ func _on_timeline_value_changed(value):
 		
 		const AGENT = preload("res://agent.tscn")
 		var new_agent = AGENT.instantiate()
-		new_agent.position = Vector2(pos[1], pos[0]) * 80
+		new_agent.position = Vector2(pos[1], pos[0]) * 40
 		new_agent.modulate = Color(color[0]/255, color[1]/255, color[2]/255)
 		new_agent.get_child(-1).text = id
 		%Map/Population.add_child(new_agent)

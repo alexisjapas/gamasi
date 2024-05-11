@@ -295,7 +295,7 @@ class Lab:
             compressed_pos.append(frame_positions)
 
         # Create a single struct with compressed positions and timestamps
-        return timestamps, compressed_pos
+        return timestamps + [float("inf")], compressed_pos
 
     def get_timeline(self, simulation):
         timeline = []
